@@ -20,7 +20,7 @@ Valora is a teaching/demo project that simulates a small economy with AI-driven 
   - *Regulator*: PPO agent (Stable Baselines3) that nudges tax rates toward inflation/unemployment targets.
 - **Tax utility**: Simple order tax calculator with adjustable per-order-type modifiers.
 - **Blockchain integration**: In-memory ledger plus pending transaction buffer; mining produces hashed blocks with Merkle-style roots, and APIs expose pending transactions, individual blocks, the full ledger, and verification/audit status.
-- **Templates**: Basic HTML view rendered at `/` for quick inspection; extensible for richer dashboards later.
+- **Templates**: A monochrome, full-page console at `/` that submits a policy to the five core agents, streams their outputs side by side, and lets you download a consolidated text report after each run via `/api/agents/report`.
 
 ## How the pieces work together
 1. The Flask app boots and tries to construct a Groq-backed `LLM` via CrewAI. Missing or failing credentials cause an automatic fallback to a stub LLM.

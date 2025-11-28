@@ -11,6 +11,7 @@ Notes:
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import uuid
@@ -18,9 +19,20 @@ import threading
 import time
 import traceback
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
+
+
+def _coerce_json_safe(value):
+    """Recursively convert datetime and other non-JSON-native types to serializable values."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_coerce_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _coerce_json_safe(v) for k, v in value.items()}
+    return value
 
 
 def _coerce_json_safe(value):
@@ -198,6 +210,7 @@ else:
 
 
 simulation_state: Dict[str, dict] = {}
+agent_reports: Dict[str, dict] = {}
 crew_run_history: List[dict] = []
 
 
@@ -873,7 +886,7 @@ blockchain_expert = Agent(
     verbose=False,
 )
 
-def build_crew(*, policy_text: str = ""):
+def build_crew(*, policy_text: str = "", include_blockchain: bool = True):
     indicators = economic_manager.economic_indicators
     cycle = economic_manager.current_cycle
     shocks = economic_manager.active_shocks
@@ -944,39 +957,43 @@ def build_crew(*, policy_text: str = ""):
         agent=policy_critic,
     )
 
-    pending = len(blockchain.pending_transactions)
-    ledger_height = len(blockchain.ledger)
-    last_block = blockchain.ledger[-1] if blockchain.ledger else None
-    last_hash = last_block.get("hash") if last_block else "genesis"
-    audit_task = Task(
-        description=(
-            "Audit pending transactions and confirm integrity of ledger; list pending tx count and any hash inconsistencies. "
-            f"Pending transactions: {pending}, ledger height: {ledger_height}, tip hash: {last_hash}. "
-            "Keep the entire response within 300 words."
-        ),
-        expected_output="audit_report",
-        agent=blockchain_expert,
-        dependencies=[critic_task],
-    )
+    agents = [
+        economic_analyst,
+        tax_advisor,
+        policy_supporter,
+        policy_opposer,
+        policy_critic,
+    ]
+    tasks = [
+        economic_task,
+        tax_task,
+        supporter_task,
+        opposer_task,
+        critic_task,
+    ]
+
+    if include_blockchain:
+        pending = len(blockchain.pending_transactions)
+        ledger_height = len(blockchain.ledger)
+        last_block = blockchain.ledger[-1] if blockchain.ledger else None
+        last_hash = last_block.get("hash") if last_block else "genesis"
+        audit_task = Task(
+            description=(
+                "Audit pending transactions and confirm integrity of ledger; list pending tx count and any hash inconsistencies. "
+                f"Pending transactions: {pending}, ledger height: {ledger_height}, tip hash: {last_hash}. "
+                "Keep the entire response within 300 words."
+            ),
+            expected_output="audit_report",
+            agent=blockchain_expert,
+            dependencies=[critic_task],
+        )
+        agents.append(blockchain_expert)
+        tasks.append(audit_task)
 
     return Crew(
-        agents=[
-            economic_analyst,
-            tax_advisor,
-            policy_supporter,
-            policy_opposer,
-            policy_critic,
-            blockchain_expert,
-        ],
-        tasks=[
-            economic_task,
-            tax_task,
-            supporter_task,
-            opposer_task,
-            critic_task,
-            audit_task,
-        ],
-        verbose=False,
+        agents=agents,
+        tasks=tasks,
+        verbose=True,
         process=Process.sequential,
         manager_llm=agent_llm,
     )
@@ -990,6 +1007,72 @@ def api_economic_status():
 @app.route("/api/agents/status", methods=["GET"])
 def api_agents_status():
     return jsonify(agent_simulation.status())
+
+
+def _stringify_task_output(output: Any) -> str:
+    if output is None:
+        return "No output recorded."
+    if isinstance(output, str):
+        return output
+    try:
+        return json.dumps(output, indent=2, default=str)
+    except Exception:
+        return str(output)
+
+
+@app.route("/api/agents/run", methods=["POST"])
+def api_agents_run():
+    sid = session.get("session_id")
+    data = request.get_json(force=True)
+    policy_text = (data.get("text") or data.get("policy_text") or "").strip()
+    if not policy_text:
+        return jsonify({"error": "policy text is required"}), 400
+
+    crew = build_crew(policy_text=policy_text, include_blockchain=False)
+    try:
+        final_output = crew.kickoff()
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": f"Crew run failed: {exc}"}), 500
+
+    agent_outputs = []
+    for task in crew.tasks:
+        agent_outputs.append({
+            "agent": getattr(task.agent, "role", "agent"),
+            "task": task.description,
+            "output": _stringify_task_output(getattr(task, "output", None)),
+        })
+
+    if sid:
+        agent_reports[sid] = {
+            "policy_text": policy_text,
+            "agents": agent_outputs,
+            "final_output": _stringify_task_output(final_output),
+        }
+
+    return jsonify({
+        "policy": policy_text,
+        "final_output": _stringify_task_output(final_output),
+        "agents": agent_outputs,
+    })
+
+
+@app.route("/api/agents/report", methods=["GET"])
+def api_agents_report():
+    sid = session.get("session_id")
+    run = agent_reports.get(sid)
+    if not run:
+        return jsonify({"error": "no agent run found for this session"}), 404
+
+    buffer = io.StringIO()
+    buffer.write(f"Policy: {run['policy_text']}\n\n")
+    for idx, entry in enumerate(run.get("agents", []), start=1):
+        buffer.write(f"{idx}. {entry.get('agent', 'Agent')}\n")
+        buffer.write(f"{entry.get('output', '').strip()}\n\n")
+    buffer.write("Final Output:\n")
+    buffer.write(run.get("final_output", "") + "\n")
+    payload = io.BytesIO(buffer.getvalue().encode("utf-8"))
+    payload.seek(0)
+    return send_file(payload, as_attachment=True, download_name="policy_report.txt", mimetype="text/plain")
 
 
 @app.route("/api/policies", methods=["GET"])
@@ -1166,6 +1249,7 @@ def reset_session():
     if "session_id" in session:
         sid = session.pop("session_id")
         simulation_state.pop(sid, None)
+        agent_reports.pop(sid, None)
     return redirect(url_for("index"))
 
 
