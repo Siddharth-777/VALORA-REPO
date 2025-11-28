@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valora Five-Agent Console</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #0c0c0c;
+      --muted: #3a3a3a;
+      --border: #111111;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 18px 24px 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
+    .pill { border: 1px solid var(--border); padding: 8px 12px; border-radius: 999px; font-size: 13px; }
+    main { flex: 1; display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; padding: 18px 24px 24px; }
+    .panel { border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+    .panel h2 { margin: 0; font-size: 16px; letter-spacing: 0.2px; display: flex; align-items: center; justify-content: space-between; }
+    textarea { width: 100%; min-height: 170px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; font-size: 14px; background: #f8f8f8; color: var(--fg); resize: vertical; }
+    button { font-family: inherit; font-size: 14px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--fg); color: #fff; cursor: pointer; }
+    button.secondary { background: #fff; color: var(--fg); }
+    .macro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+    .metric { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #f5f5f5; }
+    .metric .label { font-size: 12px; color: var(--muted); letter-spacing: 0.4px; text-transform: uppercase; }
+    .metric .value { font-size: 18px; font-weight: 700; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .subtext { font-size: 13px; color: var(--muted); }
+    .agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; width: 100%; }
+    .agent-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fafafa; min-height: 180px; }
+    .agent-card h3 { margin: 0; font-size: 14px; letter-spacing: 0.2px; }
+    .agent-output { border: 1px dashed var(--border); border-radius: 10px; padding: 10px; font-size: 13px; background: #fff; flex: 1; overflow: auto; white-space: pre-wrap; }
+    .footer { border-top: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .final-box { border: 1px dashed var(--border); padding: 10px 12px; border-radius: 10px; background: #f5f5f5; min-height: 70px; flex: 1; }
+    @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Valora Analysis Orchestration</h1>
+      <div class="subtext">Run the five-agent stack on any policy and capture a full report.</div>
+    </div>
+    <div class="pill" id="token-pill">Max tokens: {{ max_tokens | int }}</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Policy Input <span class="subtext" id="cycle-pill">Cycle: loading…</span></h2>
+      <textarea id="policy-text" placeholder="Describe your policy. Example: Create a $15,000 refundable tax credit with an income phase-out starting at $180k, funded by a temporary 0.3% corporate surcharge."></textarea>
+      <div class="actions">
+        <button id="run-button">Send to 5 Agents</button>
+        <button class="secondary" id="reset-button">Reset session</button>
+        <span class="subtext" id="run-status">Waiting for input.</span>
+      </div>
+      <div class="macro-grid" id="macro-grid"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Agent Outputs</h2>
+      <div class="agents-grid" id="agent-grid"></div>
+    </section>
+  </main>
+
+  <div class="footer">
+    <button id="report-button">Download full report (.txt)</button>
+    <div class="final-box" id="final-output">Outputs will appear here after a run.</div>
+  </div>
+
+  <script>
+    const agentOrder = [
+      "Economic Analyst",
+      "Tax Advisor",
+      "Policy Supporter",
+      "Policy Opposer",
+      "Policy Critic"
+    ];
+
+    const grid = document.getElementById('agent-grid');
+    const finalBox = document.getElementById('final-output');
+    const statusEl = document.getElementById('run-status');
+    const runButton = document.getElementById('run-button');
+    const reportButton = document.getElementById('report-button');
+
+    function renderEmptyCards(message = 'Awaiting output') {
+      grid.innerHTML = '';
+      agentOrder.forEach(name => {
+        const card = document.createElement('div');
+        card.className = 'agent-card';
+        card.innerHTML = `<h3>${name}</h3><div class="agent-output">${message}</div>`;
+        grid.appendChild(card);
+      });
+    }
+
+    renderEmptyCards();
+
+    async function fetchJSON(url, options={}) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      return res.headers.get('content-type')?.includes('application/json') ? res.json() : res.text();
+    }
+
+    async function loadIndicators() {
+      try {
+        const data = await fetchJSON('/api/economic/status');
+        const macroGrid = document.getElementById('macro-grid');
+        macroGrid.innerHTML = '';
+        const entries = [
+          ['GDP', data.indicators.gdp?.toFixed?.(2)],
+          ['Inflation (%)', data.indicators.inflation?.toFixed?.(2)],
+          ['Unemployment (%)', data.indicators.unemployment?.toFixed?.(2)],
+          ['Confidence', data.indicators.consumer_confidence?.toFixed?.(2)],
+          ['Days in Cycle', data.days_in_cycle]
+        ];
+        entries.forEach(([label, value]) => {
+          const div = document.createElement('div');
+          div.className = 'metric';
+          div.innerHTML = `<div class="label">${label}</div><div class="value">${value ?? '—'}</div>`;
+          macroGrid.appendChild(div);
+        });
+        document.getElementById('cycle-pill').textContent = `Cycle: ${data.current_cycle}`;
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    }
+
+    async function runAgents() {
+      const policyText = document.getElementById('policy-text').value.trim();
+      if (!policyText) {
+        statusEl.textContent = 'Please enter a policy first.';
+        return;
+      }
+      statusEl.textContent = 'Running crew…';
+      renderEmptyCards('Running…');
+      try {
+        const result = await fetchJSON('/api/agents/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: policyText })
+        });
+        grid.innerHTML = '';
+        agentOrder.forEach(name => {
+          const entry = (result.agents || []).find(a => a.agent === name) || {};
+          const card = document.createElement('div');
+          card.className = 'agent-card';
+          card.innerHTML = `<h3>${name}</h3><div class="agent-output">${entry.output || 'No output recorded.'}</div>`;
+          grid.appendChild(card);
+        });
+        finalBox.textContent = result.final_output || 'No final output.';
+        statusEl.textContent = 'Crew completed.';
+      } catch (err) {
+        renderEmptyCards('Run failed.');
+        finalBox.textContent = err.message;
+        statusEl.textContent = err.message;
+      }
+    }
+
+    async function downloadReport() {
+      try {
+        const res = await fetch('/api/agents/report');
+        if (!res.ok) throw new Error('No report available. Run the crew first.');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'policy_report.txt';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        statusEl.textContent = err.message;
+      }
+    }
+
+    async function resetSession() {
+      await fetch('/reset_session', { method: 'POST' });
+      document.getElementById('policy-text').value = '';
+      renderEmptyCards();
+      finalBox.textContent = 'Outputs will appear here after a run.';
+      statusEl.textContent = 'Session reset.';
+      loadIndicators();
+    }
+
+    runButton.addEventListener('click', runAgents);
+    reportButton.addEventListener('click', downloadReport);
+    document.getElementById('reset-button').addEventListener('click', resetSession);
+
+    loadIndicators();
+  </script>
+</body>
+</html>
