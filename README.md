@@ -52,6 +52,11 @@ python crew_orchestrator.py --mode cli
 
 By default the server listens on port `5004` (override with `PORT`). Set `FLASK_SECRET_KEY` to customize the session secret, and `GROQ_MODEL` to choose a different Groq model. To further contain output size and token-per-minute usage, completions are capped with `MAX_AGENT_COMPLETION_TOKENS` (default 450 tokens) to keep every agent within the 300-word ceiling. The background threads that step the economic cycle and mine pending blockchain transactions start automatically when you launch the script.
 
+## Simulation dashboard (web UI)
+- With the server running, open [http://localhost:5004/simulation](http://localhost:5004/simulation) to load the interactive simulation dashboard.
+- Enter any policy text, click **Run Simulation**, and the UI will pick the five most affected actors, animate their pentagon layout, and plot per-actor trajectories alongside global GDP, inflation, and unemployment trends.
+- You can also reach the page from the main console via the **Open simulation dashboard →** link in the header.
+
 ## Extending and learning next
 - **Improve learning**: Swap the firm heuristic for a DQN, add online updates for the bank model, or tune PPO reward shaping for the regulator.
 - **Closer loop between AI outputs and state**: Map CrewAI recommendations into concrete parameter updates (e.g., dynamic tax multipliers or spending boosts).

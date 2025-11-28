@@ -11,14 +11,16 @@ Notes:
 
 import argparse
 import hashlib
+import importlib.util
 import io
 import json
 import os
-import uuid
 import threading
 import time
 import traceback
+import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
@@ -143,6 +145,25 @@ MAX_AGENT_COMPLETION_TOKENS = int(os.getenv("MAX_AGENT_COMPLETION_TOKENS", "300"
 app = Flask(__name__, template_folder="templates")
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-123")
 os.makedirs("templates", exist_ok=True)
+
+
+SIMULATION_PATH = Path(__file__).parent / "simulation engine" / "simulation.py"
+_simulation_module = None
+
+
+def load_simulation_module():
+    global _simulation_module
+    if _simulation_module:
+        return _simulation_module
+    if not SIMULATION_PATH.exists():
+        raise FileNotFoundError(f"Simulation module not found at {SIMULATION_PATH}")
+    spec = importlib.util.spec_from_file_location("policy_simulation", SIMULATION_PATH)
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _simulation_module = module
+        return module
+    raise ImportError("Unable to load simulation module")
 
 
 def init_llm():
@@ -1199,6 +1220,25 @@ def api_crew_runs():
     limit = request.args.get("limit")
     limit_int = int(limit) if limit else 20
     return jsonify({"runs": crew_run_history[-limit_int:]})
+
+
+@app.route("/api/simulation/run", methods=["POST"])
+def run_policy_simulation():
+    data = request.get_json(silent=True) or {}
+    policy_text = (data.get("policy") or data.get("text") or "").strip()
+    time_steps = int(data.get("time_steps") or 8)
+
+    if not policy_text:
+        return jsonify({"error": "Policy text is required."}), 400
+
+    simulation_module = load_simulation_module()
+    result = simulation_module.simulate_economy(policy_text, time_steps=time_steps)
+    return jsonify(_coerce_json_safe(result))
+
+
+@app.route("/simulation")
+def simulation_page():
+    return render_template("simulation.html")
 
 @app.route("/")
 def index():
