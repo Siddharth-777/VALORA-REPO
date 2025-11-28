@@ -35,17 +35,6 @@ def _coerce_json_safe(value):
     return value
 
 
-def _coerce_json_safe(value):
-    """Recursively convert datetime and other non-JSON-native types to serializable values."""
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, list):
-        return [_coerce_json_safe(item) for item in value]
-    if isinstance(value, dict):
-        return {k: _coerce_json_safe(v) for k, v in value.items()}
-    return value
-
-
 from crewai import Agent, Task, Crew, Process, LLM
 from agents.bank_brain import BankRiskBrain
 from agents.consumer_brain import ConsumerQBrain
@@ -212,6 +201,16 @@ else:
 simulation_state: Dict[str, dict] = {}
 agent_reports: Dict[str, dict] = {}
 crew_run_history: List[dict] = []
+
+
+def _ensure_session_state() -> str:
+    """Guarantee a session id and backing simulation_state entry."""
+    sid = session.get("session_id")
+    if not sid or sid not in simulation_state:
+        sid = str(uuid.uuid4())
+        session["session_id"] = sid
+        simulation_state[sid] = {"policies": [], "debates": []}
+    return sid
 
 
 class EconomicCycleManager:
@@ -1022,7 +1021,7 @@ def _stringify_task_output(output: Any) -> str:
 
 @app.route("/api/agents/run", methods=["POST"])
 def api_agents_run():
-    sid = session.get("session_id")
+    sid = _ensure_session_state()
     data = request.get_json(force=True)
     policy_text = (data.get("text") or data.get("policy_text") or "").strip()
     if not policy_text:
@@ -1042,12 +1041,11 @@ def api_agents_run():
             "output": _stringify_task_output(getattr(task, "output", None)),
         })
 
-    if sid:
-        agent_reports[sid] = {
-            "policy_text": policy_text,
-            "agents": agent_outputs,
-            "final_output": _stringify_task_output(final_output),
-        }
+    agent_reports[sid] = {
+        "policy_text": policy_text,
+        "agents": agent_outputs,
+        "final_output": _stringify_task_output(final_output),
+    }
 
     return jsonify({
         "policy": policy_text,
@@ -1204,14 +1202,7 @@ def api_crew_runs():
 
 @app.route("/")
 def index():
-    if "session_id" not in session:
-        session["session_id"] = str(uuid.uuid4())
-        simulation_state[session["session_id"]] = {
-            "policies": [],
-            "debates": []
-        }
-
-    sid = session["session_id"]
+    sid = _ensure_session_state()
     return render_template(
         "index.html",
         indicators=economic_manager.economic_indicators,
@@ -1223,9 +1214,7 @@ def index():
 
 @app.route("/submit_policy", methods=["POST"])
 def submit_policy():
-    if "session_id" not in session:
-        return redirect(url_for("index"))
-    sid = session["session_id"]
+    sid = _ensure_session_state()
     policy_text = request.form.get("policy_text", "")
     if not policy_text:
         return jsonify({"error": "no policy text"}), 400
