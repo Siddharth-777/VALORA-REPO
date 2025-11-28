@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Valora Orchestration Console</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #0f0f0f;
+      --muted: #3a3a3a;
+      --accent: #0d0d0d;
+      --accent-weak: #dcdcdc;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 18px 24px 10px;
+      border-bottom: 1px solid var(--accent-weak);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .title-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    h1 {
+      font-size: 22px;
+      letter-spacing: 0.2px;
+      margin: 0;
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .pill {
+      border: 1px solid var(--accent-weak);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      background: #f8f8f8;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    main {
+      flex: 1;
+      padding: 20px 24px 30px;
+      display: grid;
+      grid-template-columns: 2fr 1.2fr;
+      gap: 18px;
+    }
+    .panel {
+      background: #fff;
+      border: 1px solid var(--accent-weak);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px dashed var(--accent-weak);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat .label {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .stat .value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    textarea, input, select, button {
+      font-family: inherit;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      border-radius: 10px;
+      border: 1px solid var(--accent-weak);
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fafafa;
+    }
+    .form-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    input, select {
+      border: 1px solid var(--accent-weak);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+      background: #fafafa;
+      min-width: 120px;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    button.primary:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--accent-weak);
+      color: var(--fg);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow: auto;
+      padding-right: 2px;
+    }
+    .list-item {
+      border: 1px solid var(--accent-weak);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fcfcfc;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #f2f2f2;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--accent-weak);
+    }
+    .mono {
+      font-family: "SFMono-Regular", "JetBrains Mono", "Menlo", monospace;
+      font-size: 12px;
+      background: #f8f8f8;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed var(--accent-weak);
+      overflow: auto;
+      max-height: 240px;
+    }
+    .split {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 1080px) {
+      main { grid-template-columns: 1fr; }
+      .split { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title-block">
+      <h1>Valora Analysis Orchestration</h1>
+      <div class="subtitle">Submit policies, monitor macro indicators, and review coordinated agent outputs.</div>
+    </div>
+    <div class="pill" id="cycle-pill">Cycle: loading…</div>
+  </header>
+
+  <main>
+    <section class="panel" id="policy-panel">
+      <h2>
+        Policy Workspace
+        <span class="badge" id="token-limit">Max tokens: …</span>
+      </h2>
+      <div class="split">
+        <div>
+          <textarea id="policy-text" placeholder="Describe a policy to analyze. Example: Create a $15,000 refundable tax credit with an income phase-out at $180k, funded by a temporary 0.3% corporate surcharge."></textarea>
+          <div class="form-row">
+            <input type="number" id="duration" min="30" max="365" step="15" value="180" aria-label="Duration days" title="Duration in days">
+            <select id="policy-type" aria-label="Policy type">
+              <option value="">Detect policy type automatically</option>
+              <option value="fiscal_policy">Fiscal policy</option>
+              <option value="monetary_policy">Monetary policy</option>
+            </select>
+            <input type="number" id="intensity" step="0.001" placeholder="Intensity override" aria-label="Intensity override">
+            <button class="primary" id="submit-policy">Submit to Crew</button>
+            <button class="ghost" id="reset-session">Reset session</button>
+          </div>
+          <div class="mono" id="submit-result">Awaiting submission…</div>
+        </div>
+        <div>
+          <h3 style="margin:0 0 6px;font-size:14px;">Macro Indicators</h3>
+          <div class="grid" id="indicator-grid"></div>
+          <h3 style="margin:10px 0 6px;font-size:14px;">Active Shocks</h3>
+          <div class="list" id="shocks-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="crew-panel">
+      <h2>Recent Crew Output</h2>
+      <div class="list" id="crew-runs"></div>
+    </section>
+
+    <section class="panel" id="policy-stream">
+      <h2>Latest Policies & Effects</h2>
+      <div class="list" id="policy-list"></div>
+    </section>
+
+    <section class="panel" id="ledger-panel">
+      <h2>Ledger & Audit</h2>
+      <div class="grid">
+        <div class="stat">
+          <div class="label">Ledger Height</div>
+          <div class="value" id="ledger-height">–</div>
+        </div>
+        <div class="stat">
+          <div class="label">Pending Tx</div>
+          <div class="value" id="pending-tx">–</div>
+        </div>
+        <div class="stat">
+          <div class="label">Tip Hash</div>
+          <div class="value" id="tip-hash">–</div>
+        </div>
+      </div>
+      <div class="mono" id="audit-log">Audit log will appear here.</div>
+    </section>
+  </main>
+
+  <script>
+    const tokenLimitEl = document.getElementById('token-limit');
+    const maxTokens = {{ max_tokens | int }};
+    tokenLimitEl.textContent = `Max tokens: ${maxTokens}`;
+
+    async function fetchJSON(url, options={}) {
+      const res = await fetch(url, options);
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      return await res.json();
+    }
+
+    function renderIndicators(data) {
+      const grid = document.getElementById('indicator-grid');
+      const { indicators } = data;
+      grid.innerHTML = '';
+      const entries = [
+        ['GDP', indicators.gdp?.toFixed?.(2)],
+        ['Inflation (%)', indicators.inflation?.toFixed?.(2)],
+        ['Unemployment (%)', indicators.unemployment?.toFixed?.(2)],
+        ['Confidence', indicators.consumer_confidence?.toFixed?.(2)],
+        ['Days in Cycle', data.days_in_cycle],
+      ];
+      entries.forEach(([label, value]) => {
+        const card = document.createElement('div');
+        card.className = 'stat';
+        card.innerHTML = `<div class="label">${label}</div><div class="value">${value ?? '–'}</div>`;
+        grid.appendChild(card);
+      });
+      const pill = document.getElementById('cycle-pill');
+      pill.textContent = `Cycle: ${data.current_cycle ?? '—'}`;
+      const shocks = document.getElementById('shocks-list');
+      shocks.innerHTML = data.active_shocks?.length
+        ? data.active_shocks.map(s => `<div class="list-item"><strong>${s.type}</strong><div class="label">Magnitude: ${s.magnitude}; Ends in: ${s.ends_in_days} days</div></div>`).join('')
+        : '<div class="list-item">No active shocks.</div>';
+    }
+
+    function renderPolicies(payload) {
+      const list = document.getElementById('policy-list');
+      const policies = payload.policies || [];
+      const active = payload.active_effects || [];
+      list.innerHTML = '';
+      if (!policies.length) {
+        list.innerHTML = '<div class="list-item">No policies submitted yet.</div>';
+        return;
+      }
+      policies.slice(-8).reverse().forEach(p => {
+        const effects = active.filter(a => a.policy_id === p.id)
+          .map(a => `${a.type} × ${a.magnitude} (ends in ${a.ends_in_days || '?'} days)`).join('; ');
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `<div style="font-weight:700;">${p.text}</div>
+          <div class="label">Status: ${p.status} • Type: ${p.analysis?.policy_type || 'n/a'} • Intensity: ${p.analysis?.parameters?.intensity ?? '—'}</div>
+          <div class="label">Created: ${p.created_at || '—'}</div>
+          <div class="mono">${effects || 'No active effects.'}</div>`;
+        list.appendChild(div);
+      });
+    }
+
+    function renderCrewRuns(data) {
+      const container = document.getElementById('crew-runs');
+      const runs = data.runs || [];
+      container.innerHTML = '';
+      if (!runs.length) {
+        container.innerHTML = '<div class="list-item">Crew has not run yet.</div>';
+        return;
+      }
+      runs.slice(-4).reverse().forEach(run => {
+        const div = document.createElement('div');
+        div.className = 'list-item';
+        div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <strong>Run ${run.id?.slice?.(0,8) || ''}</strong>
+            <span class="badge">${run.status || 'complete'}</span>
+          </div>
+          <div class="label">Started: ${run.started_at || '—'} • Duration: ${run.duration_s ? run.duration_s + 's' : '—'}</div>
+          <div class="mono">${typeof run.final_output === 'string' ? run.final_output : JSON.stringify(run.final_output, null, 2)}</div>`;
+        container.appendChild(div);
+      });
+    }
+
+    function renderAudit(data) {
+      const ledgerHeight = data.valid ? (data.audit?.length ? data.audit[0]?.ledger_height ?? data.audit.length : '—') : '—';
+      document.getElementById('ledger-height').textContent = ledgerHeight;
+      const auditText = JSON.stringify(data.audit || data.errors || {}, null, 2);
+      document.getElementById('audit-log').textContent = auditText.length > 2 ? auditText : 'No audit records yet.';
+    }
+
+    async function refreshAll() {
+      try {
+        const [status, policies, runs, pending, ledger, verify] = await Promise.all([
+          fetchJSON('/api/economic/status'),
+          fetchJSON('/api/policies'),
+          fetchJSON('/api/crew/runs'),
+          fetchJSON('/api/blockchain/pending'),
+          fetchJSON('/api/blockchain/ledger'),
+          fetchJSON('/api/blockchain/verify'),
+        ]);
+        renderIndicators(status);
+        renderPolicies(policies);
+        renderCrewRuns(runs);
+        document.getElementById('pending-tx').textContent = pending.pending?.length ?? 0;
+        document.getElementById('tip-hash').textContent = ledger.ledger?.slice(-1)[0]?.hash || 'genesis';
+        renderAudit(verify);
+      } catch (err) {
+        document.getElementById('submit-result').textContent = err.message;
+      }
+    }
+
+    async function submitPolicy() {
+      const text = document.getElementById('policy-text').value.trim();
+      const duration = parseInt(document.getElementById('duration').value, 10) || 180;
+      const policyType = document.getElementById('policy-type').value || undefined;
+      const intensityRaw = document.getElementById('intensity').value;
+      const payload = { text, duration_days: duration };
+      if (policyType) payload.policy_type = policyType;
+      if (intensityRaw !== '') payload.intensity = intensityRaw;
+      if (!text) {
+        document.getElementById('submit-result').textContent = 'Please enter a policy first.';
+        return;
+      }
+      document.getElementById('submit-result').textContent = 'Submitting…';
+      try {
+        const res = await fetchJSON('/api/policies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        document.getElementById('submit-result').textContent = JSON.stringify(res, null, 2);
+        await refreshAll();
+      } catch (err) {
+        document.getElementById('submit-result').textContent = err.message;
+      }
+    }
+
+    async function resetSession() {
+      await fetch('/reset_session', { method: 'POST' });
+      document.getElementById('policy-text').value = '';
+      document.getElementById('submit-result').textContent = 'Session reset. State cleared.';
+      await refreshAll();
+    }
+
+    document.getElementById('submit-policy').addEventListener('click', submitPolicy);
+    document.getElementById('reset-session').addEventListener('click', resetSession);
+
+    refreshAll();
+    setInterval(refreshAll, 120000);
+  </script>
+</body>
+</html>

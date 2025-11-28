@@ -1134,7 +1134,8 @@ def index():
         indicators=economic_manager.economic_indicators,
         policies=simulation_state[sid]["policies"],
         debates=simulation_state[sid]["debates"],
-        crew_runs=crew_run_history[-5:]
+        crew_runs=crew_run_history[-5:],
+        max_tokens=MAX_AGENT_COMPLETION_TOKENS,
     )
 
 @app.route("/submit_policy", methods=["POST"])
