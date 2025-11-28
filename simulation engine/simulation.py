@@ -30,8 +30,8 @@ class SimulationAgent:
     behavioural_rules: Dict[str, float]
     reward_penalty: str
 
-    def step(self, policy_signals: PolicySignals, time_index: int) -> StateVector:
-        """Advance the agent state by one time step based on policy signals."""
+    def step(self, policy_signals: PolicySignals, channels: Dict[str, float], time_index: int) -> StateVector:
+        """Advance the agent state by one time step based on policy signals and targeted channels."""
 
         fiscal_effect = policy_signals.get("fiscal", 0.0)
         monetary_effect = policy_signals.get("monetary", 0.0)
@@ -43,15 +43,44 @@ class SimulationAgent:
             + regulatory_effect * self.behavioural_rules.get("regulatory_sensitivity", 0.0)
         )
 
-        decay = max(0.3, 1.0 - 0.07 * time_index)
+        decay = max(0.35, 1.0 - 0.06 * time_index)
         directional_weight = self.behavioural_rules.get("policy_alignment", 1.0)
         adjustment_rate = self.behavioural_rules.get("adjustment_rate", 0.25)
         delta = net_pressure * adjustment_rate * decay * directional_weight
 
+        channel_magnifier = {
+            "consumption_support": 1.15,
+            "credit_easing": 1.1,
+            "green_transition": 1.05,
+            "trade_push": 1.0,
+            "price_control": 0.9,
+            "labor_support": 1.1,
+        }
+
         for param, value in list(self.state.items()):
             sensitivity = self.behavioural_rules.get(f"{param}_sensitivity", 1.0)
             param_bias = self.behavioural_rules.get(f"{param}_bias", 0.0)
-            updated = value + delta * sensitivity + 0.01 * param_bias
+
+            targeted = 0.0
+            name = param.lower()
+            for channel, weight in channel_magnifier.items():
+                if channel not in channels:
+                    continue
+                if channel == "consumption_support" and any(k in name for k in ["income", "consumption", "poverty", "price"]):
+                    targeted += channels[channel] * weight
+                if channel == "credit_easing" and any(k in name for k in ["loan", "credit", "default", "liquidity"]):
+                    targeted += channels[channel] * weight
+                if channel == "green_transition" and any(k in name for k in ["carbon", "energy", "fuel", "kwh", "emission"]):
+                    targeted += channels[channel] * weight
+                if channel == "trade_push" and any(k in name for k in ["export", "import", "shipping", "trade", "exchange"]):
+                    targeted += channels[channel] * weight
+                if channel == "price_control" and "cost" in name:
+                    targeted += channels[channel] * weight
+                if channel == "labor_support" and any(k in name for k in ["labor", "employment", "unemployment", "job"]):
+                    targeted += channels[channel] * weight
+
+            drift = 0.01 * param_bias
+            updated = value + delta * sensitivity + targeted * 0.4 + drift
             self.state[param] = max(-5.0, min(5.0, round(updated, 3)))
 
         return dict(self.state)
@@ -402,8 +431,8 @@ def _actor_blueprints() -> List[ActorBlueprint]:
     ]
 
 
-def extract_policy_signals(policy_text: str) -> PolicySignals:
-    """Lightweight heuristic extraction of the policy's directional signals."""
+def extract_policy_signals(policy_text: str) -> Tuple[PolicySignals, Dict[str, float]]:
+    """Heuristic extraction of the policy's directional signals and targeted channels."""
 
     lowered = policy_text.lower()
 
@@ -424,11 +453,22 @@ def extract_policy_signals(policy_text: str) -> PolicySignals:
     monetary_intensity = direction * min(1.0, 0.1 + 0.05 * monetary_score)
     regulatory_intensity = min(1.0, 0.1 + 0.05 * regulatory_score)
 
-    return {
+    signals = {
         "fiscal": round(fiscal_intensity, 3),
         "monetary": round(monetary_intensity, 3),
         "regulation": round(regulatory_intensity, 3),
     }
+
+    channels = {
+        "consumption_support": round(0.2 + 0.05 * _score(["transfer", "benefit", "income", "cash", "voucher"]), 3),
+        "credit_easing": round(0.15 + 0.05 * _score(["credit", "loan", "rate", "bank", "liquidity", "refinance"]), 3),
+        "green_transition": round(0.1 + 0.05 * _score(["emission", "carbon", "renewable", "energy", "grid", "fuel"]), 3),
+        "trade_push": round(0.1 + 0.05 * _score(["export", "tariff", "trade", "shipping", "fx", "exchange"]), 3),
+        "price_control": round(0.1 + 0.05 * _score(["price cap", "ceiling", "control", "limit", "cap" ]), 3),
+        "labor_support": round(0.1 + 0.05 * _score(["job", "employment", "hiring", "wage", "labor"]), 3),
+    }
+
+    return signals, channels
 
 
 def select_affected_actors(policy_text: str, blueprints: List[ActorBlueprint], top_n: int = 5) -> List[ActorBlueprint]:
@@ -445,9 +485,9 @@ def select_affected_actors(policy_text: str, blueprints: List[ActorBlueprint], t
     return sorted_bps[:top_n]
 
 
-def build_agents_for_policy(policy_text: str) -> Tuple[List[SimulationAgent], PolicySignals]:
+def build_agents_for_policy(policy_text: str) -> Tuple[List[SimulationAgent], PolicySignals, Dict[str, float]]:
     blueprints = _actor_blueprints()
-    policy_signals = extract_policy_signals(policy_text)
+    policy_signals, channels = extract_policy_signals(policy_text)
     selected_bps = select_affected_actors(policy_text, blueprints, top_n=5)
 
     agents = [
@@ -460,15 +500,16 @@ def build_agents_for_policy(policy_text: str) -> Tuple[List[SimulationAgent], Po
         )
         for bp in selected_bps
     ]
-    return agents, policy_signals
+    return agents, policy_signals, channels
 
 
 def simulate_economy(policy_text: str, time_steps: int = 8) -> Dict[str, object]:
     """Simulate the evolution of the economy over time for the top impacted actors."""
 
-    agents, policy_signals = build_agents_for_policy(policy_text)
+    agents, policy_signals, channels = build_agents_for_policy(policy_text)
     timeline: List[Dict[str, StateVector]] = []
     actor_series: Dict[str, List[float]] = {agent.name: [] for agent in agents}
+    actor_timelines: Dict[str, Dict[str, List[float]]] = {agent.name: {} for agent in agents}
     global_series: List[Dict[str, float]] = []
 
     def _composite_index(state: StateVector) -> float:
@@ -476,55 +517,89 @@ def simulate_economy(policy_text: str, time_steps: int = 8) -> Dict[str, object]
             return 0.0
         return round(sum(state.values()) / len(state), 3)
 
-    base_global = {"gdp": 100.0, "inflation": 2.5, "unemployment": 5.2}
+    def _track_timelines(snapshot: Dict[str, StateVector]):
+        for actor, params in snapshot.items():
+            for param, value in params.items():
+                actor_timelines.setdefault(actor, {}).setdefault(param, []).append(value)
+
+    def _macro(snapshot: Dict[str, StateVector], last: Dict[str, float]) -> Dict[str, float]:
+        base = last or {"gdp": 100.0, "inflation": 2.5, "unemployment": 5.2}
+
+        def _avg(keys: List[str]) -> float:
+            vals: List[float] = []
+            for state in snapshot.values():
+                for k in keys:
+                    if k in state:
+                        vals.append(state[k])
+            return sum(vals) / len(vals) if vals else 0.0
+
+        consumption = _avg(["income_distribution", "consumption_elasticity", "essential_spending_share", "poverty_risk"])
+        production = _avg([
+            "production_capacity",
+            "capacity_utilization_rate",
+            "investment_rate",
+            "generation_capacity",
+        ])
+        credit = _avg(["loan_dependency", "credit_demand", "lending_policy", "loan_portfolio_risk", "default_probability"])
+        trade = _avg(["export_volume", "global_demand_sensitivity", "exchange_rate_exposure", "shipping_cost_index"])
+        energy_cost = _avg(["cost_per_kwh", "carbon_intensity", "energy_price_pass_through_rate", "fuel_dependency_mix"])
+
+        gdp_change = (
+            consumption * 2.2
+            + production * 2.8
+            + trade * 1.7
+            - energy_cost * 0.6
+            - credit * 1.0
+            + policy_signals.get("fiscal", 0.0) * 3.2
+            + policy_signals.get("monetary", 0.0) * 2.4
+            - policy_signals.get("regulation", 0.0) * 1.2
+            + channels.get("trade_push", 0.0) * 1.3
+        )
+
+        inflation_change = (
+            consumption * 0.9
+            + energy_cost * 1.6
+            - production * 0.4
+            - policy_signals.get("monetary", 0.0) * 1.1
+            + policy_signals.get("fiscal", 0.0) * 0.7
+            + channels.get("price_control", 0.0) * -0.6
+        )
+
+        unemployment_change = (
+            -production * 1.3
+            - consumption * 0.7
+            + credit * 0.4
+            + policy_signals.get("regulation", 0.0) * 0.5
+            - channels.get("labor_support", 0.0) * 0.8
+        )
+
+        noise = 0.3
+        return {
+            "gdp": round(max(50.0, min(150.0, base["gdp"] + gdp_change * 0.35 + noise)), 3),
+            "inflation": round(max(0.1, min(15.0, base["inflation"] + inflation_change * 0.25 + 0.1)), 3),
+            "unemployment": round(max(0.5, min(20.0, base["unemployment"] + unemployment_change * 0.3 - 0.05)), 3),
+        }
 
     for t in range(time_steps):
         snapshot: Dict[str, StateVector] = {}
         for agent in agents:
-            snapshot[agent.name] = agent.step(policy_signals, time_index=t)
+            snapshot[agent.name] = agent.step(policy_signals, channels, time_index=t)
         timeline.append(snapshot)
+        _track_timelines(snapshot)
 
         actor_indices = {_name: _composite_index(state) for _name, state in snapshot.items()}
         for name, score in actor_indices.items():
             actor_series[name].append(score)
 
-        avg_index = sum(actor_indices.values()) / max(1, len(actor_indices))
-        last = global_series[-1] if global_series else base_global
-
-        gdp = last["gdp"] + (
-            policy_signals.get("fiscal", 0.0) * 3.0
-            + policy_signals.get("monetary", 0.0) * 2.0
-            - policy_signals.get("regulation", 0.0) * 1.5
-            + avg_index
-        ) * 0.8
-
-        inflation = last["inflation"] + (
-            policy_signals.get("fiscal", 0.0) * 0.9
-            - policy_signals.get("monetary", 0.0) * 0.8
-            + policy_signals.get("regulation", 0.0) * 0.6
-            + avg_index * 0.2
-        ) * 0.5
-
-        unemployment = last["unemployment"] + (
-            -policy_signals.get("fiscal", 0.0) * 0.7
-            - policy_signals.get("monetary", 0.0) * 0.4
-            + policy_signals.get("regulation", 0.0) * 0.3
-            - avg_index * 0.25
-        ) * 0.6
-
-        global_series.append(
-            {
-                "gdp": round(max(50.0, min(150.0, gdp)), 3),
-                "inflation": round(max(0.1, min(15.0, inflation)), 3),
-                "unemployment": round(max(0.5, min(20.0, unemployment)), 3),
-            }
-        )
+        last_global = global_series[-1] if global_series else {}
+        global_series.append(_macro(snapshot, last_global))
 
     return {
-        "policy_signals": policy_signals,
+        "policy_signals": {**policy_signals, **channels},
         "selected_actors": [agent.name for agent in agents],
         "timeline": timeline,
         "actor_series": actor_series,
+        "actor_timelines": actor_timelines,
         "global_series": global_series,
     }
 

@@ -193,6 +193,21 @@
       align-items: center;
     }
 
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .state-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
     .charts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -230,6 +245,7 @@
       <div class="actions">
         <button id="run-btn">Run Simulation</button>
         <button class="secondary" id="fill-btn">Use sample policy</button>
+        <button class="secondary" id="download-btn">Download JSON</button>
         <span class="status">Time steps: <input type="number" id="steps" value="8" min="3" max="16" style="width:70px; background:transparent; color:var(--fg); border:1px solid var(--border); border-radius:8px; padding:4px 8px;" /></span>
       </div>
       <div>
@@ -240,6 +256,8 @@
         <div class="status">Top 5 affected actors</div>
         <div class="pentagon-area" id="pentagon"></div>
         <div class="node-labels" id="actor-labels"></div>
+        <div class="status" style="margin-top:8px;">Latest state snapshot</div>
+        <div class="state-grid" id="state-grid"></div>
       </div>
     </section>
 
@@ -261,9 +279,12 @@
     const statusText = document.getElementById('status-text');
     const stepsInput = document.getElementById('steps');
     const actorChartsWrap = document.getElementById('actor-charts');
+    const stateGrid = document.getElementById('state-grid');
+    const downloadBtn = document.getElementById('download-btn');
 
     let globalChart;
     let actorCharts = {};
+    let latestResult = null;
 
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
 
@@ -305,6 +326,23 @@
         const latest = series[series.length - 1];
         card.innerHTML = `<span>${actor}</span><span style="color: var(--accent-2); font-weight: 700;">${latest ?? '—'}</span>`;
         actorLabels.appendChild(card);
+      });
+    }
+
+    function renderStateSnapshot(timeline) {
+      stateGrid.innerHTML = '';
+      if (!timeline?.length) return;
+      const latest = timeline[timeline.length - 1];
+      Object.entries(latest).forEach(([actor, params]) => {
+        const card = document.createElement('div');
+        card.className = 'state-card';
+        const entries = Object.entries(params)
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+          .slice(0, 4)
+          .map(([k, v]) => `<div><strong>${k}</strong>: ${v}</div>`) // show top movers
+          .join('');
+        card.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">${actor}</div>${entries}`;
+        stateGrid.appendChild(card);
       });
     }
 
@@ -379,12 +417,14 @@
         });
         if (!res.ok) throw new Error('Simulation failed.');
         const data = await res.json();
+        latestResult = data;
         selectionPill.textContent = `${data.selected_actors.length} actors selected`;
         renderSignals(data.policy_signals || {});
         renderPentagonNodes(data.selected_actors || []);
         renderActorLabels(data.selected_actors || [], data.actor_series || {});
         buildGlobalChart(data.global_series || []);
         buildActorCharts(data.actor_series || {});
+        renderStateSnapshot(data.timeline || []);
         statusText.textContent = 'Complete';
       } catch (err) {
         statusText.textContent = err.message || 'Simulation failed.';
@@ -395,6 +435,21 @@
     document.getElementById('fill-btn').addEventListener('click', () => {
       policyInput.value = samplePolicy;
       statusText.textContent = 'Sample policy loaded';
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!latestResult) {
+        statusText.textContent = 'Run a simulation before downloading results.';
+        return;
+      }
+      const blob = new Blob([JSON.stringify(latestResult, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'simulation_result.json';
+      link.click();
+      URL.revokeObjectURL(url);
+      statusText.textContent = 'Results downloaded';
     });
   </script>
 </body>
