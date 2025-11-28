@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Policy Simulation Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #151821;
+      --border: #1f2430;
+      --fg: #f7f8fa;
+      --muted: #8d93a5;
+      --accent: #5dd0ff;
+      --accent-2: #7cf29c;
+      --danger: #ff7c7c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 20% 20%, rgba(93, 208, 255, 0.08), transparent 40%),
+        radial-gradient(circle at 80% 0%, rgba(124, 242, 156, 0.05), transparent 35%),
+        var(--bg);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 18px 24px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(4px);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.2px;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 18px;
+      padding: 18px 24px 28px;
+      flex: 1;
+      width: 100%;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 16px;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 14px;
+      background: #0c0e14;
+      color: var(--fg);
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: linear-gradient(120deg, var(--accent), #4f9bff);
+      color: #041025;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
+    }
+
+    button:active {
+      transform: translateY(1px);
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--fg);
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .signal-badges {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .pentagon-area {
+      position: relative;
+      height: 280px;
+      background: #0d1018;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .node {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(160deg, rgba(93, 208, 255, 0.25), rgba(124, 242, 156, 0.15));
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8px;
+      color: var(--fg);
+      font-size: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(2px);
+    }
+
+    .node.primary {
+      background: linear-gradient(160deg, rgba(93, 208, 255, 0.35), rgba(124, 242, 156, 0.35));
+      width: 88px;
+      height: 88px;
+    }
+
+    .node-labels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .label-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .state-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .state-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.025);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+
+    .chart-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #0d1018;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    }
+
+    @media (max-width: 1080px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Policy Simulation Engine</h1>
+      <div class="status">Run the dynamic economy simulation from your browser.</div>
+    </div>
+    <div class="pill" id="selection-pill">Awaiting policy input</div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Policy & Run Controls <span class="status" id="status-text">Idle</span></h2>
+      <textarea id="policy-text" placeholder="Describe your policy. Example: Expand child benefits, lower policy rates by 50 bps, and raise renewable mandates for utilities."></textarea>
+      <div class="actions">
+        <button id="run-btn">Run Simulation</button>
+        <button class="secondary" id="fill-btn">Use sample policy</button>
+        <button class="secondary" id="download-btn">Download JSON</button>
+        <span class="status">Time steps: <input type="number" id="steps" value="8" min="3" max="16" style="width:70px; background:transparent; color:var(--fg); border:1px solid var(--border); border-radius:8px; padding:4px 8px;" /></span>
+      </div>
+      <div>
+        <div class="status">Policy signals detected</div>
+        <div class="signal-badges" id="signal-badges"></div>
+      </div>
+      <div>
+        <div class="status">Top 5 affected actors</div>
+        <div class="pentagon-area" id="pentagon"></div>
+        <div class="node-labels" id="actor-labels"></div>
+        <div class="status" style="margin-top:8px;">Latest state snapshot</div>
+        <div class="state-grid" id="state-grid"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Charts & Dashboards</h2>
+      <div class="chart-card">
+        <canvas id="global-chart" height="160"></canvas>
+      </div>
+      <div class="charts-grid" id="actor-charts"></div>
+    </section>
+  </main>
+
+  <script>
+    const policyInput = document.getElementById('policy-text');
+    const signalBadges = document.getElementById('signal-badges');
+    const pentagon = document.getElementById('pentagon');
+    const actorLabels = document.getElementById('actor-labels');
+    const selectionPill = document.getElementById('selection-pill');
+    const statusText = document.getElementById('status-text');
+    const stepsInput = document.getElementById('steps');
+    const actorChartsWrap = document.getElementById('actor-charts');
+    const stateGrid = document.getElementById('state-grid');
+    const downloadBtn = document.getElementById('download-btn');
+
+    let globalChart;
+    let actorCharts = {};
+    let latestResult = null;
+
+    const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
+
+    function renderSignals(signals) {
+      signalBadges.innerHTML = '';
+      Object.entries(signals).forEach(([key, value]) => {
+        const badge = document.createElement('div');
+        badge.className = 'pill';
+        badge.textContent = `${key}: ${value}`;
+        signalBadges.appendChild(badge);
+      });
+    }
+
+    function renderPentagonNodes(actors) {
+      pentagon.innerHTML = '';
+      if (!actors.length) return;
+      const centerX = pentagon.clientWidth / 2;
+      const centerY = pentagon.clientHeight / 2;
+      const radius = Math.min(centerX, centerY) - 50;
+      actors.forEach((actor, idx) => {
+        const angle = (Math.PI * 2 * idx) / actors.length - Math.PI / 2;
+        const x = centerX + radius * Math.cos(angle) - 40;
+        const y = centerY + radius * Math.sin(angle) - 40;
+        const node = document.createElement('div');
+        node.className = `node ${idx === 0 ? 'primary' : ''}`;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.textContent = actor;
+        pentagon.appendChild(node);
+      });
+    }
+
+    function renderActorLabels(actors, actorSeries) {
+      actorLabels.innerHTML = '';
+      actors.forEach((actor) => {
+        const card = document.createElement('div');
+        card.className = 'label-card';
+        const series = actorSeries?.[actor] || [];
+        const latest = series[series.length - 1];
+        card.innerHTML = `<span>${actor}</span><span style="color: var(--accent-2); font-weight: 700;">${latest ?? '—'}</span>`;
+        actorLabels.appendChild(card);
+      });
+    }
+
+    function renderStateSnapshot(timeline) {
+      stateGrid.innerHTML = '';
+      if (!timeline?.length) return;
+      const latest = timeline[timeline.length - 1];
+      Object.entries(latest).forEach(([actor, params]) => {
+        const card = document.createElement('div');
+        card.className = 'state-card';
+        const entries = Object.entries(params)
+          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+          .slice(0, 4)
+          .map(([k, v]) => `<div><strong>${k}</strong>: ${v}</div>`) // show top movers
+          .join('');
+        card.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">${actor}</div>${entries}`;
+        stateGrid.appendChild(card);
+      });
+    }
+
+    function buildGlobalChart(globalSeries) {
+      const labels = globalSeries.map((_, idx) => `t${idx + 1}`);
+      const ctx = document.getElementById('global-chart').getContext('2d');
+      if (globalChart) globalChart.destroy();
+      globalChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'GDP', data: globalSeries.map((g) => g.gdp), borderColor: '#5dd0ff', backgroundColor: 'rgba(93, 208, 255, 0.15)', tension: 0.25 },
+            { label: 'Inflation', data: globalSeries.map((g) => g.inflation), borderColor: '#ffbe76', backgroundColor: 'rgba(255, 190, 118, 0.15)', tension: 0.25 },
+            { label: 'Unemployment', data: globalSeries.map((g) => g.unemployment), borderColor: '#ff7c7c', backgroundColor: 'rgba(255, 124, 124, 0.15)', tension: 0.25 },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#e6e8f0' } } },
+          scales: {
+            x: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+            y: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+          },
+        },
+      });
+    }
+
+    function buildActorCharts(actorSeries) {
+      actorChartsWrap.innerHTML = '';
+      actorCharts = {};
+      const labels = Object.values(actorSeries)[0]?.map((_, idx) => `t${idx + 1}`) || [];
+      Object.entries(actorSeries).forEach(([actor, series], idx) => {
+        const card = document.createElement('div');
+        card.className = 'chart-card';
+        const canvas = document.createElement('canvas');
+        canvas.height = 140;
+        card.appendChild(canvas);
+        actorChartsWrap.appendChild(card);
+        const colors = ['#7cf29c', '#5dd0ff', '#ffbe76', '#ff7c7c', '#c792ea'];
+        const color = colors[idx % colors.length];
+        actorCharts[actor] = new Chart(canvas.getContext('2d'), {
+          type: 'line',
+          data: {
+            labels,
+            datasets: [{ label: actor, data: series, borderColor: color, backgroundColor: `${color}33`, tension: 0.3 }],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+              y: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+            },
+          },
+        });
+      });
+    }
+
+    async function runSimulation() {
+      const policy = policyInput.value.trim();
+      const steps = Number(stepsInput.value) || 8;
+      if (!policy) {
+        statusText.textContent = 'Please enter a policy first.';
+        return;
+      }
+      statusText.textContent = 'Running simulation...';
+      try {
+        const res = await fetch('/api/simulation/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ policy, time_steps: steps }),
+        });
+        if (!res.ok) throw new Error('Simulation failed.');
+        const data = await res.json();
+        latestResult = data;
+        selectionPill.textContent = `${data.selected_actors.length} actors selected`;
+        renderSignals(data.policy_signals || {});
+        renderPentagonNodes(data.selected_actors || []);
+        renderActorLabels(data.selected_actors || [], data.actor_series || {});
+        buildGlobalChart(data.global_series || []);
+        buildActorCharts(data.actor_series || {});
+        renderStateSnapshot(data.timeline || []);
+        statusText.textContent = 'Complete';
+      } catch (err) {
+        statusText.textContent = err.message || 'Simulation failed.';
+      }
+    }
+
+    document.getElementById('run-btn').addEventListener('click', runSimulation);
+    document.getElementById('fill-btn').addEventListener('click', () => {
+      policyInput.value = samplePolicy;
+      statusText.textContent = 'Sample policy loaded';
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      if (!latestResult) {
+        statusText.textContent = 'Run a simulation before downloading results.';
+        return;
+      }
+      const blob = new Blob([JSON.stringify(latestResult, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'simulation_result.json';
+      link.click();
+      URL.revokeObjectURL(url);
+      statusText.textContent = 'Results downloaded';
+    });
+  </script>
+</body>
+</html>
