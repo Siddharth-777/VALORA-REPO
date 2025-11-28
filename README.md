@@ -42,9 +42,12 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run the orchestrator (Flask + background loops)
+# Start the Flask API + background loops (default)
 export GROQ_API_KEY=<your_key>   # optional; omit to use stub LLM
 python crew_orchestrator.py
+
+# Or run the interactive CLI
+python crew_orchestrator.py --mode cli
 ```
 
 By default the server listens on port `5004` (override with `PORT`). Set `FLASK_SECRET_KEY` to customize the session secret, and `GROQ_MODEL` to choose a different Groq model. To further contain output size and token-per-minute usage, completions are capped with `MAX_AGENT_COMPLETION_TOKENS` (default 450 tokens) to keep every agent within the 300-word ceiling. The background threads that step the economic cycle and mine pending blockchain transactions start automatically when you launch the script.
