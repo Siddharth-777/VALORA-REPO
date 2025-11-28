@@ -137,7 +137,7 @@ MODEL_ID = os.getenv("GROQ_MODEL", "groq/llama-3.1-8b-instant")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # must be set in env
 PORT = int(os.getenv("PORT", 5004))
 # Cap completions so each agent respects the 300-word output ceiling while staying under TPM limits.
-MAX_AGENT_COMPLETION_TOKENS = int(os.getenv("MAX_AGENT_COMPLETION_TOKENS", "450"))
+MAX_AGENT_COMPLETION_TOKENS = int(os.getenv("MAX_AGENT_COMPLETION_TOKENS", "300"))
 
 
 app = Flask(__name__, template_folder="templates")
@@ -824,7 +824,7 @@ economic_analyst = Agent(
     goal="Analyze economic indicators and suggest policy actions",
     backstory="Economist with macro and policy expertise",
     llm=agent_llm,
-    verbose=True
+    verbose=False
 )
 
 tax_advisor = Agent(
@@ -832,7 +832,7 @@ tax_advisor = Agent(
     goal="Recommend tax or fiscal adjustments given economic state",
     backstory="Tax expert focusing on efficient fiscal policy",
     llm=agent_llm,
-    verbose=True
+    verbose=False
 )
 
 policy_supporter = Agent(
@@ -840,7 +840,7 @@ policy_supporter = Agent(
     goal="Champion proposed policies and forecast positive outcomes",
     backstory="Advocate who highlights benefits, confidence effects, and growth pathways",
     llm=agent_llm,
-    verbose=True,
+    verbose=False,
 )
 
 policy_opposer = Agent(
@@ -851,7 +851,7 @@ policy_opposer = Agent(
         "Always take an oppositional view; never endorse the proposed policy."
     ),
     llm=agent_llm,
-    verbose=True,
+    verbose=False,
 )
 
 policy_critic = Agent(
@@ -859,7 +859,7 @@ policy_critic = Agent(
     goal="Synthesize pro and con perspectives into a balanced conclusion",
     backstory="Neutral reviewer who reconciles competing arguments into clear guidance",
     llm=agent_llm,
-    verbose=True,
+    verbose=False,
 )
 
 def blockchain_audit_tool():
