@@ -1215,7 +1215,6 @@ def run_cli_interface():
         "Valora CLI — submit policy proposals directly from the terminal. "
         "Type 'quit' to exit."
     )
-    print(f"Agent max_tokens per reply: {MAX_AGENT_COMPLETION_TOKENS}\n")
     while True:
         try:
             policy_text = input("Enter a policy proposal: ").strip()
@@ -1266,8 +1265,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         choices=["cli", "server"],
-        default="cli",
-        help="Run in interactive CLI mode (default) or start the Flask server",
+        default="server",
+        help="Start the Flask server (default) or run the interactive CLI",
     )
     args = parser.parse_args()
 
