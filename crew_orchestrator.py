@@ -9,6 +9,7 @@ Notes:
 - Disable Flask auto reloader (use_reloader=False) to avoid debugpy threading issues.
 """
 
+import argparse
 import hashlib
 import json
 import os
@@ -20,6 +21,17 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+
+
+def _coerce_json_safe(value):
+    """Recursively convert datetime and other non-JSON-native types to serializable values."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_coerce_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _coerce_json_safe(v) for k, v in value.items()}
+    return value
 
 
 from crewai import Agent, Task, Crew, Process, LLM
@@ -590,7 +602,7 @@ class PolicyExperimentationManager:
     ):
         self._validate_inputs(text, intensity_override, duration_override)
         policy_id = str(uuid.uuid4())
-        context = self._current_context()
+        context = _coerce_json_safe(self._current_context())
 
         try:
             analysis = self._call_council("analyze_policy", text, context=context)
@@ -634,8 +646,9 @@ class PolicyExperimentationManager:
             "status": status,
             "created_at": datetime.now().isoformat(),
         }
-        self.proposals.append(record)
-        return record
+        serializable_record = _coerce_json_safe(record)
+        self.proposals.append(serializable_record)
+        return serializable_record
 
     def list_policies(self):
         return self.proposals
@@ -857,14 +870,15 @@ blockchain_expert = Agent(
     goal="Validate and log transactions to ledger; audit blocks",
     backstory="Blockchain engineer and audit specialist",
     llm=agent_llm,
-    verbose=True,
+    verbose=False,
 )
 
-def build_crew():
+def build_crew(*, policy_text: str = ""):
     indicators = economic_manager.economic_indicators
     cycle = economic_manager.current_cycle
     shocks = economic_manager.active_shocks
     policy_effects = policy_manager.active_policy_effects()
+    policy_context = policy_text or "No policy provided; default to current stance."
 
     economic_task = Task(
         description=(
@@ -872,6 +886,7 @@ def build_crew():
             f"GDP: {indicators['gdp']:.2f}, inflation: {indicators['inflation']:.2f}%, unemployment: {indicators['unemployment']:.2f}%, "
             f"consumer confidence: {indicators['consumer_confidence']:.2f}. Cycle phase: {cycle}. "
             f"Active shocks: {shocks}. Active policy effects: {policy_effects}. "
+            f"Proposed policy under review: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="short_report",
@@ -882,6 +897,7 @@ def build_crew():
         description=(
             "Given the latest macro indicators, recommend tax or fiscal adjustments with pros/cons. "
             f"Input indicators — GDP: {indicators['gdp']:.2f}, inflation: {indicators['inflation']:.2f}%, unemployment: {indicators['unemployment']:.2f}%. "
+            f"Policy to consider: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="tax_recommendations",
@@ -892,6 +908,7 @@ def build_crew():
     supporter_task = Task(
         description=(
             "Review the economic analysis and tax recommendations, then argue in support of the policy direction. "
+            f"Proposed policy text: {policy_context}. "
             "Explain why the approach should work, the channels of impact, and the expected positive outcomes. "
             "Keep the entire response within 300 words."
         ),
@@ -907,6 +924,7 @@ def build_crew():
             "Return exactly four lines total: line 1 is a one-line verdict starting with 'Oppose'. Lines 2-4 each "
             "capture one quantified risk/failure mode with a mitigation, formatted as 'Risk: <metric impact>; Mitigation: "
             "<action>'. Keep the whole reply under 120 words; do not add headings, bullets, or praise/endorsement. "
+            f"Policy text to challenge: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="policy_opposition",
@@ -919,6 +937,7 @@ def build_crew():
             "Independently judge the policy direction without reading supporter/opposer outputs. "
             "Produce exactly four plain-text lines with no headers or bullets: line 1 is the verdict as Proceed/Modify/Pause;"
             " lines 2-4 are three brief reasons anchored in macro indicators and tax advice. Keep it under 80 words total. "
+            f"Policy being assessed: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="policy_conclusion",
@@ -1115,7 +1134,8 @@ def index():
         indicators=economic_manager.economic_indicators,
         policies=simulation_state[sid]["policies"],
         debates=simulation_state[sid]["debates"],
-        crew_runs=crew_run_history[-5:]
+        crew_runs=crew_run_history[-5:],
+        max_tokens=MAX_AGENT_COMPLETION_TOKENS,
     )
 
 @app.route("/submit_policy", methods=["POST"])
@@ -1166,7 +1186,8 @@ def crew_loop():
         try:
             print(f"[{datetime.now().isoformat()}] Running Crew kickoff...")
             # Build a fresh crew each run to inject up-to-date context
-            dynamic_crew = build_crew()
+            latest_policy_text = policy_manager.proposals[-1]["text"] if policy_manager.proposals else ""
+            dynamic_crew = build_crew(policy_text=latest_policy_text)
             state_snapshot = {
                 "timestamp": datetime.now().isoformat(),
                 "indicators": economic_manager.economic_indicators.copy(),
@@ -1190,10 +1211,69 @@ def crew_loop():
             print("[ERROR] crew_loop outer", traceback.format_exc())
         time.sleep(3600)  # run hourly
 
-if __name__ == "__main__":
+def run_cli_interface():
+    print(
+        "Valora CLI — submit policy proposals directly from the terminal. "
+        "Type 'quit' to exit."
+    )
+    while True:
+        try:
+            policy_text = input("Enter a policy proposal: ").strip()
+        except EOFError:
+            print("\n[CLI] Input stream closed. Exiting.")
+            break
+
+        if not policy_text:
+            print("[CLI] Please provide non-empty policy text or type 'quit' to exit.")
+            continue
+        if policy_text.lower() in {"quit", "exit"}:
+            print("[CLI] Goodbye!")
+            break
+
+        try:
+            record = policy_manager.submit_policy(policy_text, author="cli", source="cli")
+        except ValueError as ve:
+            print(f"[CLI] Policy submission error: {ve}")
+            continue
+
+        print("\n=== Policy Submission Recorded ===")
+        print(json.dumps(record, indent=2))
+
+        try:
+            crew = build_crew(policy_text=policy_text)
+            result = crew.kickoff()
+            print("\n=== Crew Output ===")
+            print(result)
+        except Exception as e:
+            print(f"[CLI] Crew run failed: {e}")
+
+        econ_state = economic_manager.economic_indicators
+        print("\n=== Updated Economic Indicators ===")
+        print(json.dumps(econ_state, indent=2))
+
+
+def run_server():
     # Background threads
     threading.Thread(target=econ_cycle_loop, daemon=True).start()
     threading.Thread(target=crew_loop, daemon=True).start()
 
     # Run Flask without the reloader to avoid debugpy/threading issues
     app.run(host="0.0.0.0", port=PORT, debug=True, use_reloader=False)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Valora orchestration entrypoint")
+    parser.add_argument(
+        "--mode",
+        choices=["cli", "server"],
+        default="server",
+        help="Start the Flask server (default) or run the interactive CLI",
+    )
+    args = parser.parse_args()
+
+    if args.mode == "server":
+        run_server()
+    else:
+        run_cli_interface()
+
+
