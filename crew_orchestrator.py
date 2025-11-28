@@ -23,6 +23,17 @@ from typing import Dict, List, Tuple
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 
 
+def _coerce_json_safe(value):
+    """Recursively convert datetime and other non-JSON-native types to serializable values."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_coerce_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _coerce_json_safe(v) for k, v in value.items()}
+    return value
+
+
 from crewai import Agent, Task, Crew, Process, LLM
 from agents.bank_brain import BankRiskBrain
 from agents.consumer_brain import ConsumerQBrain
@@ -591,7 +602,7 @@ class PolicyExperimentationManager:
     ):
         self._validate_inputs(text, intensity_override, duration_override)
         policy_id = str(uuid.uuid4())
-        context = self._current_context()
+        context = _coerce_json_safe(self._current_context())
 
         try:
             analysis = self._call_council("analyze_policy", text, context=context)
@@ -635,8 +646,9 @@ class PolicyExperimentationManager:
             "status": status,
             "created_at": datetime.now().isoformat(),
         }
-        self.proposals.append(record)
-        return record
+        serializable_record = _coerce_json_safe(record)
+        self.proposals.append(serializable_record)
+        return serializable_record
 
     def list_policies(self):
         return self.proposals
@@ -1259,3 +1271,5 @@ if __name__ == "__main__":
         run_server()
     else:
         run_cli_interface()
+
+
