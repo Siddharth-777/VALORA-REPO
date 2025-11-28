@@ -468,17 +468,64 @@ def simulate_economy(policy_text: str, time_steps: int = 8) -> Dict[str, object]
 
     agents, policy_signals = build_agents_for_policy(policy_text)
     timeline: List[Dict[str, StateVector]] = []
+    actor_series: Dict[str, List[float]] = {agent.name: [] for agent in agents}
+    global_series: List[Dict[str, float]] = []
+
+    def _composite_index(state: StateVector) -> float:
+        if not state:
+            return 0.0
+        return round(sum(state.values()) / len(state), 3)
+
+    base_global = {"gdp": 100.0, "inflation": 2.5, "unemployment": 5.2}
 
     for t in range(time_steps):
-        snapshot = {}
+        snapshot: Dict[str, StateVector] = {}
         for agent in agents:
             snapshot[agent.name] = agent.step(policy_signals, time_index=t)
         timeline.append(snapshot)
+
+        actor_indices = {_name: _composite_index(state) for _name, state in snapshot.items()}
+        for name, score in actor_indices.items():
+            actor_series[name].append(score)
+
+        avg_index = sum(actor_indices.values()) / max(1, len(actor_indices))
+        last = global_series[-1] if global_series else base_global
+
+        gdp = last["gdp"] + (
+            policy_signals.get("fiscal", 0.0) * 3.0
+            + policy_signals.get("monetary", 0.0) * 2.0
+            - policy_signals.get("regulation", 0.0) * 1.5
+            + avg_index
+        ) * 0.8
+
+        inflation = last["inflation"] + (
+            policy_signals.get("fiscal", 0.0) * 0.9
+            - policy_signals.get("monetary", 0.0) * 0.8
+            + policy_signals.get("regulation", 0.0) * 0.6
+            + avg_index * 0.2
+        ) * 0.5
+
+        unemployment = last["unemployment"] + (
+            -policy_signals.get("fiscal", 0.0) * 0.7
+            - policy_signals.get("monetary", 0.0) * 0.4
+            + policy_signals.get("regulation", 0.0) * 0.3
+            - avg_index * 0.25
+        ) * 0.6
+
+        global_series.append(
+            {
+                "gdp": round(max(50.0, min(150.0, gdp)), 3),
+                "inflation": round(max(0.1, min(15.0, inflation)), 3),
+                "unemployment": round(max(0.5, min(20.0, unemployment)), 3),
+            }
+        )
 
     return {
         "policy_signals": policy_signals,
         "selected_actors": [agent.name for agent in agents],
         "timeline": timeline,
+        "actor_series": actor_series,
+        "global_series": global_series,
     }
 
 
@@ -487,7 +534,15 @@ if __name__ == "__main__":
         "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities."
     )
     result = simulate_economy(sample_policy, time_steps=6)
-    for idx, step in enumerate(result["timeline"], start=1):
-        print(f"\nTime step {idx}")
-        for actor, state in step.items():
-            print(f"- {actor}: {state}")
+
+    print("Selected actors:")
+    for name in result["selected_actors"]:
+        print(f"- {name}")
+
+    print("\nGlobal trajectory (GDP, inflation, unemployment):")
+    for idx, metrics in enumerate(result["global_series"], start=1):
+        print(f"t={idx}: {metrics}")
+
+    print("\nActor composite indices:")
+    for actor, series in result["actor_series"].items():
+        print(f"{actor}: {series}")
