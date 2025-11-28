@@ -9,7 +9,9 @@ Notes:
 - Disable Flask auto reloader (use_reloader=False) to avoid debugpy threading issues.
 """
 
+import argparse
 import hashlib
+import io
 import json
 import os
 import uuid
@@ -17,9 +19,20 @@ import threading
 import time
 import traceback
 from datetime import datetime, timedelta
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for, send_file
+
+
+def _coerce_json_safe(value):
+    """Recursively convert datetime and other non-JSON-native types to serializable values."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, list):
+        return [_coerce_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _coerce_json_safe(v) for k, v in value.items()}
+    return value
 
 
 from crewai import Agent, Task, Crew, Process, LLM
@@ -186,6 +199,7 @@ else:
 
 
 simulation_state: Dict[str, dict] = {}
+agent_reports: Dict[str, dict] = {}
 crew_run_history: List[dict] = []
 
 
@@ -590,7 +604,7 @@ class PolicyExperimentationManager:
     ):
         self._validate_inputs(text, intensity_override, duration_override)
         policy_id = str(uuid.uuid4())
-        context = self._current_context()
+        context = _coerce_json_safe(self._current_context())
 
         try:
             analysis = self._call_council("analyze_policy", text, context=context)
@@ -634,8 +648,9 @@ class PolicyExperimentationManager:
             "status": status,
             "created_at": datetime.now().isoformat(),
         }
-        self.proposals.append(record)
-        return record
+        serializable_record = _coerce_json_safe(record)
+        self.proposals.append(serializable_record)
+        return serializable_record
 
     def list_policies(self):
         return self.proposals
@@ -857,14 +872,15 @@ blockchain_expert = Agent(
     goal="Validate and log transactions to ledger; audit blocks",
     backstory="Blockchain engineer and audit specialist",
     llm=agent_llm,
-    verbose=True,
+    verbose=False,
 )
 
-def build_crew():
+def build_crew(*, policy_text: str = "", include_blockchain: bool = True):
     indicators = economic_manager.economic_indicators
     cycle = economic_manager.current_cycle
     shocks = economic_manager.active_shocks
     policy_effects = policy_manager.active_policy_effects()
+    policy_context = policy_text or "No policy provided; default to current stance."
 
     economic_task = Task(
         description=(
@@ -872,6 +888,7 @@ def build_crew():
             f"GDP: {indicators['gdp']:.2f}, inflation: {indicators['inflation']:.2f}%, unemployment: {indicators['unemployment']:.2f}%, "
             f"consumer confidence: {indicators['consumer_confidence']:.2f}. Cycle phase: {cycle}. "
             f"Active shocks: {shocks}. Active policy effects: {policy_effects}. "
+            f"Proposed policy under review: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="short_report",
@@ -882,6 +899,7 @@ def build_crew():
         description=(
             "Given the latest macro indicators, recommend tax or fiscal adjustments with pros/cons. "
             f"Input indicators — GDP: {indicators['gdp']:.2f}, inflation: {indicators['inflation']:.2f}%, unemployment: {indicators['unemployment']:.2f}%. "
+            f"Policy to consider: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="tax_recommendations",
@@ -892,6 +910,7 @@ def build_crew():
     supporter_task = Task(
         description=(
             "Review the economic analysis and tax recommendations, then argue in support of the policy direction. "
+            f"Proposed policy text: {policy_context}. "
             "Explain why the approach should work, the channels of impact, and the expected positive outcomes. "
             "Keep the entire response within 300 words."
         ),
@@ -907,6 +926,7 @@ def build_crew():
             "Return exactly four lines total: line 1 is a one-line verdict starting with 'Oppose'. Lines 2-4 each "
             "capture one quantified risk/failure mode with a mitigation, formatted as 'Risk: <metric impact>; Mitigation: "
             "<action>'. Keep the whole reply under 120 words; do not add headings, bullets, or praise/endorsement. "
+            f"Policy text to challenge: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="policy_opposition",
@@ -919,44 +939,49 @@ def build_crew():
             "Independently judge the policy direction without reading supporter/opposer outputs. "
             "Produce exactly four plain-text lines with no headers or bullets: line 1 is the verdict as Proceed/Modify/Pause;"
             " lines 2-4 are three brief reasons anchored in macro indicators and tax advice. Keep it under 80 words total. "
+            f"Policy being assessed: {policy_context}. "
             "Keep the entire response within 300 words."
         ),
         expected_output="policy_conclusion",
         agent=policy_critic,
     )
 
-    pending = len(blockchain.pending_transactions)
-    ledger_height = len(blockchain.ledger)
-    last_block = blockchain.ledger[-1] if blockchain.ledger else None
-    last_hash = last_block.get("hash") if last_block else "genesis"
-    audit_task = Task(
-        description=(
-            "Audit pending transactions and confirm integrity of ledger; list pending tx count and any hash inconsistencies. "
-            f"Pending transactions: {pending}, ledger height: {ledger_height}, tip hash: {last_hash}. "
-            "Keep the entire response within 300 words."
-        ),
-        expected_output="audit_report",
-        agent=blockchain_expert,
-        dependencies=[critic_task],
-    )
+    agents = [
+        economic_analyst,
+        tax_advisor,
+        policy_supporter,
+        policy_opposer,
+        policy_critic,
+    ]
+    tasks = [
+        economic_task,
+        tax_task,
+        supporter_task,
+        opposer_task,
+        critic_task,
+    ]
+
+    if include_blockchain:
+        pending = len(blockchain.pending_transactions)
+        ledger_height = len(blockchain.ledger)
+        last_block = blockchain.ledger[-1] if blockchain.ledger else None
+        last_hash = last_block.get("hash") if last_block else "genesis"
+        audit_task = Task(
+            description=(
+                "Audit pending transactions and confirm integrity of ledger; list pending tx count and any hash inconsistencies. "
+                f"Pending transactions: {pending}, ledger height: {ledger_height}, tip hash: {last_hash}. "
+                "Keep the entire response within 300 words."
+            ),
+            expected_output="audit_report",
+            agent=blockchain_expert,
+            dependencies=[critic_task],
+        )
+        agents.append(blockchain_expert)
+        tasks.append(audit_task)
 
     return Crew(
-        agents=[
-            economic_analyst,
-            tax_advisor,
-            policy_supporter,
-            policy_opposer,
-            policy_critic,
-            blockchain_expert,
-        ],
-        tasks=[
-            economic_task,
-            tax_task,
-            supporter_task,
-            opposer_task,
-            critic_task,
-            audit_task,
-        ],
+        agents=agents,
+        tasks=tasks,
         verbose=True,
         process=Process.sequential,
         manager_llm=agent_llm,
@@ -971,6 +996,72 @@ def api_economic_status():
 @app.route("/api/agents/status", methods=["GET"])
 def api_agents_status():
     return jsonify(agent_simulation.status())
+
+
+def _stringify_task_output(output: Any) -> str:
+    if output is None:
+        return "No output recorded."
+    if isinstance(output, str):
+        return output
+    try:
+        return json.dumps(output, indent=2, default=str)
+    except Exception:
+        return str(output)
+
+
+@app.route("/api/agents/run", methods=["POST"])
+def api_agents_run():
+    sid = session.get("session_id")
+    data = request.get_json(force=True)
+    policy_text = (data.get("text") or data.get("policy_text") or "").strip()
+    if not policy_text:
+        return jsonify({"error": "policy text is required"}), 400
+
+    crew = build_crew(policy_text=policy_text, include_blockchain=False)
+    try:
+        final_output = crew.kickoff()
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"error": f"Crew run failed: {exc}"}), 500
+
+    agent_outputs = []
+    for task in crew.tasks:
+        agent_outputs.append({
+            "agent": getattr(task.agent, "role", "agent"),
+            "task": task.description,
+            "output": _stringify_task_output(getattr(task, "output", None)),
+        })
+
+    if sid:
+        agent_reports[sid] = {
+            "policy_text": policy_text,
+            "agents": agent_outputs,
+            "final_output": _stringify_task_output(final_output),
+        }
+
+    return jsonify({
+        "policy": policy_text,
+        "final_output": _stringify_task_output(final_output),
+        "agents": agent_outputs,
+    })
+
+
+@app.route("/api/agents/report", methods=["GET"])
+def api_agents_report():
+    sid = session.get("session_id")
+    run = agent_reports.get(sid)
+    if not run:
+        return jsonify({"error": "no agent run found for this session"}), 404
+
+    buffer = io.StringIO()
+    buffer.write(f"Policy: {run['policy_text']}\n\n")
+    for idx, entry in enumerate(run.get("agents", []), start=1):
+        buffer.write(f"{idx}. {entry.get('agent', 'Agent')}\n")
+        buffer.write(f"{entry.get('output', '').strip()}\n\n")
+    buffer.write("Final Output:\n")
+    buffer.write(run.get("final_output", "") + "\n")
+    payload = io.BytesIO(buffer.getvalue().encode("utf-8"))
+    payload.seek(0)
+    return send_file(payload, as_attachment=True, download_name="policy_report.txt", mimetype="text/plain")
 
 
 @app.route("/api/policies", methods=["GET"])
@@ -1115,7 +1206,8 @@ def index():
         indicators=economic_manager.economic_indicators,
         policies=simulation_state[sid]["policies"],
         debates=simulation_state[sid]["debates"],
-        crew_runs=crew_run_history[-5:]
+        crew_runs=crew_run_history[-5:],
+        max_tokens=MAX_AGENT_COMPLETION_TOKENS,
     )
 
 @app.route("/submit_policy", methods=["POST"])
@@ -1146,6 +1238,7 @@ def reset_session():
     if "session_id" in session:
         sid = session.pop("session_id")
         simulation_state.pop(sid, None)
+        agent_reports.pop(sid, None)
     return redirect(url_for("index"))
 
 
@@ -1166,7 +1259,8 @@ def crew_loop():
         try:
             print(f"[{datetime.now().isoformat()}] Running Crew kickoff...")
             # Build a fresh crew each run to inject up-to-date context
-            dynamic_crew = build_crew()
+            latest_policy_text = policy_manager.proposals[-1]["text"] if policy_manager.proposals else ""
+            dynamic_crew = build_crew(policy_text=latest_policy_text)
             state_snapshot = {
                 "timestamp": datetime.now().isoformat(),
                 "indicators": economic_manager.economic_indicators.copy(),
@@ -1190,10 +1284,69 @@ def crew_loop():
             print("[ERROR] crew_loop outer", traceback.format_exc())
         time.sleep(3600)  # run hourly
 
-if __name__ == "__main__":
+def run_cli_interface():
+    print(
+        "Valora CLI — submit policy proposals directly from the terminal. "
+        "Type 'quit' to exit."
+    )
+    while True:
+        try:
+            policy_text = input("Enter a policy proposal: ").strip()
+        except EOFError:
+            print("\n[CLI] Input stream closed. Exiting.")
+            break
+
+        if not policy_text:
+            print("[CLI] Please provide non-empty policy text or type 'quit' to exit.")
+            continue
+        if policy_text.lower() in {"quit", "exit"}:
+            print("[CLI] Goodbye!")
+            break
+
+        try:
+            record = policy_manager.submit_policy(policy_text, author="cli", source="cli")
+        except ValueError as ve:
+            print(f"[CLI] Policy submission error: {ve}")
+            continue
+
+        print("\n=== Policy Submission Recorded ===")
+        print(json.dumps(record, indent=2))
+
+        try:
+            crew = build_crew(policy_text=policy_text)
+            result = crew.kickoff()
+            print("\n=== Crew Output ===")
+            print(result)
+        except Exception as e:
+            print(f"[CLI] Crew run failed: {e}")
+
+        econ_state = economic_manager.economic_indicators
+        print("\n=== Updated Economic Indicators ===")
+        print(json.dumps(econ_state, indent=2))
+
+
+def run_server():
     # Background threads
     threading.Thread(target=econ_cycle_loop, daemon=True).start()
     threading.Thread(target=crew_loop, daemon=True).start()
 
     # Run Flask without the reloader to avoid debugpy/threading issues
     app.run(host="0.0.0.0", port=PORT, debug=True, use_reloader=False)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Valora orchestration entrypoint")
+    parser.add_argument(
+        "--mode",
+        choices=["cli", "server"],
+        default="server",
+        help="Start the Flask server (default) or run the interactive CLI",
+    )
+    args = parser.parse_args()
+
+    if args.mode == "server":
+        run_server()
+    else:
+        run_cli_interface()
+
+

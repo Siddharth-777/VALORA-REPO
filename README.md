@@ -20,7 +20,7 @@ Valora is a teaching/demo project that simulates a small economy with AI-driven 
   - *Regulator*: PPO agent (Stable Baselines3) that nudges tax rates toward inflation/unemployment targets.
 - **Tax utility**: Simple order tax calculator with adjustable per-order-type modifiers.
 - **Blockchain integration**: In-memory ledger plus pending transaction buffer; mining produces hashed blocks with Merkle-style roots, and APIs expose pending transactions, individual blocks, the full ledger, and verification/audit status.
-- **Templates**: Basic HTML view rendered at `/` for quick inspection; extensible for richer dashboards later.
+- **Templates**: A monochrome, full-page console at `/` that submits a policy to the five core agents, streams their outputs side by side, and lets you download a consolidated text report after each run via `/api/agents/report`.
 
 ## How the pieces work together
 1. The Flask app boots and tries to construct a Groq-backed `LLM` via CrewAI. Missing or failing credentials cause an automatic fallback to a stub LLM.
@@ -42,9 +42,12 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Run the orchestrator (Flask + background loops)
+# Start the Flask API + background loops (default)
 export GROQ_API_KEY=<your_key>   # optional; omit to use stub LLM
 python crew_orchestrator.py
+
+# Or run the interactive CLI
+python crew_orchestrator.py --mode cli
 ```
 
 By default the server listens on port `5004` (override with `PORT`). Set `FLASK_SECRET_KEY` to customize the session secret, and `GROQ_MODEL` to choose a different Groq model. To further contain output size and token-per-minute usage, completions are capped with `MAX_AGENT_COMPLETION_TOKENS` (default 450 tokens) to keep every agent within the 300-word ceiling. The background threads that step the economic cycle and mine pending blockchain transactions start automatically when you launch the script.
