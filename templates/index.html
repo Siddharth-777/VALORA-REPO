@@ -59,7 +59,10 @@
       <h1>Valora Analysis Orchestration</h1>
       <div class="subtext">Run the five-agent stack on any policy and capture a full report.</div>
     </div>
-    <div class="pill" id="token-pill">Max tokens: {{ max_tokens | int }}</div>
+    <div class="actions" style="gap:8px; align-items:center;">
+      <a href="/simulation" class="pill" style="text-decoration:none; background:#f5f5f5;">Open simulation dashboard →</a>
+      <div class="pill" id="token-pill">Max tokens: {{ max_tokens | int }}</div>
+    </div>
   </header>
 
   <main>
