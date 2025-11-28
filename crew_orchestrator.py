@@ -19,6 +19,7 @@ import threading
 import time
 import traceback
 import uuid
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -160,6 +161,7 @@ def load_simulation_module():
     spec = importlib.util.spec_from_file_location("policy_simulation", SIMULATION_PATH)
     if spec and spec.loader:
         module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
         spec.loader.exec_module(module)
         _simulation_module = module
         return module
