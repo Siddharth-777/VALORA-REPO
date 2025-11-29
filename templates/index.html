@@ -1176,7 +1176,7 @@
 
     function renderLedgerStatus(snapshot) {
       if (!ledgerStatus) return;
-      const { ledgerHeight, pendingCount, tipHash, valid, errors } = snapshot;
+      const { ledgerHeight, pendingCount, tipHash, valid, errors, mockRunning } = snapshot;
       ledgerStatus.innerHTML = '';
       const items = [
         `Ledger height: ${ledgerHeight ?? '—'}`,
@@ -1184,6 +1184,9 @@
         `Tip hash: ${tipHash ? tipHash.slice(0, 10) + '…' : '—'}`,
         `Integrity: ${valid === undefined ? '—' : valid ? 'valid' : 'check errors'}`
       ];
+      if (mockRunning !== undefined) {
+        items.unshift(mockRunning ? 'Mock stream: active' : 'Mock stream: idle');
+      }
       items.forEach(text => {
         const pill = document.createElement('span');
         pill.className = 'status-pill';
@@ -1288,9 +1291,14 @@
         const label = entry.action || 'event';
         const blockIdx = entry.block_index ? `Block #${entry.block_index}` : 'Pending buffer';
         const hash = entry.hash ? `<div class="hash-pill" style="margin-top:6px;">${entry.hash}</div>` : '';
+        const flow = entry.from && entry.to ? `${entry.from} → ${entry.to}` : '';
+        const amount = entry.amount ? `Amount: ${Number(entry.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+        const memo = entry.memo ? `<div class="analysis-sub">${escapeHTML(entry.memo)}</div>` : '';
         row.innerHTML = `
           <div><strong>${label}</strong> • ${blockIdx}</div>
-          <div class="analysis-sub">${ts} · Tx count: ${entry.tx_count ?? '—'}</div>
+          <div class="analysis-sub">${ts} · ${amount || 'Tx count: ' + (entry.tx_count ?? '—')}</div>
+          ${flow ? `<div class="analysis-sub">${flow}</div>` : ''}
+          ${memo}
           ${hash}
         `;
         auditLog.appendChild(row);
@@ -1311,11 +1319,12 @@
         renderLedgerBlocks(ledgerList);
         renderAuditLog(auditRes.audit || []);
         renderLedgerStatus({
-          ledgerHeight: ledgerList.length,
-          pendingCount,
-          tipHash: ledgerList[ledgerList.length - 1]?.hash,
+          ledgerHeight: verifyRes.ledger_height ?? ledgerList.length,
+          pendingCount: verifyRes.pending_count ?? pendingCount,
+          tipHash: verifyRes.tip_hash ?? ledgerList[ledgerList.length - 1]?.hash,
           valid: verifyRes.valid,
-          errors: verifyRes.errors
+          errors: verifyRes.errors,
+          mockRunning: verifyRes.mock_running
         });
       } catch (err) {
         ledgerStatus.innerHTML = `<span class="status-pill">${escapeHTML(err.message)}</span>`;

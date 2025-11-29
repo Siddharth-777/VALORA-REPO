@@ -540,16 +540,17 @@ class BlockchainIntegration:
             try:
                 added = self.add_transaction(tx)
                 with self.lock:
-                    self.audit_log.append(
-                        {
-                            "timestamp": added["timestamp"],
-                            "action": "mock_tx_generated",
-                            "tx_id": added.get("id"),
-                            "from": sender,
-                            "to": receiver,
-                            "amount": amount,
-                        }
-                    )
+                            self.audit_log.append(
+                                {
+                                    "timestamp": added["timestamp"],
+                                    "action": "mock_tx_generated",
+                                    "tx_id": added.get("id"),
+                                    "from": sender,
+                                    "to": receiver,
+                                    "amount": amount,
+                                    "memo": memo,
+                                }
+                            )
             except Exception:
                 traceback.print_exc()
 
@@ -597,6 +598,15 @@ class BlockchainIntegration:
                 if block.get("hash") != recalculated:
                     errors.append(f"Block {block.get('index')} hash invalid")
         return len(errors) == 0, errors
+
+    def status_snapshot(self):
+        with self.lock:
+            return {
+                "ledger_height": len(self.ledger),
+                "pending_count": len(self.pending_transactions),
+                "tip_hash": self.ledger[-1]["hash"] if self.ledger else None,
+                "mock_running": self._mock_running,
+            }
 
     def get_block(self, index: int):
         with self.lock:
@@ -1146,6 +1156,20 @@ def api_agents_run():
         "final_output": _stringify_task_output(final_output),
     }
 
+    try:
+        mock_started = blockchain.start_mock_audit_stream()
+        if mock_started:
+            with blockchain.lock:
+                blockchain.audit_log.append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "action": "mock_stream_started",
+                        "reason": "agent_policy_analysis_completed",
+                    }
+                )
+    except Exception:
+        traceback.print_exc()
+
     return jsonify({
         "policy": policy_text,
         "final_output": _stringify_task_output(final_output),
@@ -1283,7 +1307,16 @@ def api_block_detail(index: int):
 @app.route("/api/blockchain/verify", methods=["GET"])
 def api_verify_chain():
     ok, errors = blockchain.verify_chain()
-    return jsonify({"valid": ok, "errors": errors, "audit": blockchain.get_audit_log(25)})
+    snapshot = blockchain.status_snapshot()
+    return jsonify({
+        "valid": ok,
+        "errors": errors,
+        "audit": blockchain.get_audit_log(25),
+        "mock_running": snapshot.get("mock_running"),
+        "ledger_height": snapshot.get("ledger_height"),
+        "tip_hash": snapshot.get("tip_hash"),
+        "pending_count": snapshot.get("pending_count"),
+    })
 
 
 @app.route("/api/blockchain/audit", methods=["GET"])
