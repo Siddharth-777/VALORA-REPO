@@ -301,7 +301,7 @@
     .node-label { font-size: 11px; font-weight: 500; text-align: center; max-width: 100px; color: var(--muted); letter-spacing: 0.2px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
     .final-section { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
-    .final-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: stretch; }
+    .final-grid { display: flex; flex-direction: column; gap: 16px; align-items: stretch; }
     .final-panel {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -312,6 +312,7 @@
       flex-direction: column;
       gap: 12px;
       min-height: 160px;
+      width: 100%;
     }
     .final-panel h2 { margin: 0; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
     .final-output {
@@ -324,8 +325,8 @@
       white-space: normal;
       border-radius: 8px;
     }
-    .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
-    .agent-card { 
+    .agent-grid { display: flex; flex-direction: column; gap: 14px; width: 100%; }
+    .agent-card {
       border: 1px solid var(--border);
       padding: 16px;
       border-radius: 8px;
@@ -333,6 +334,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      width: 100%;
     }
     .agent-card h4 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.1px; display: flex; align-items: center; gap: 10px; }
     .agent-badge { 
@@ -404,7 +406,7 @@
       main { padding: 20px; }
       .metrics.new { grid-template-columns: repeat(2, 1fr); }
       .workflow-container { height: 360px; }
-      .final-grid { grid-template-columns: 1fr; }
+      .final-grid { flex-direction: column; }
       .ledger-grid { grid-template-columns: 1fr; }
     }
   </style>
@@ -535,32 +537,6 @@
             <canvas id="global-chart"></canvas>
           </div>
           <div class="charts-stack" id="actor-charts"></div>
-        </section>
-      </div>
-    </section>
-
-    <section class="page-section" data-section="ledger">
-      <section class="panel">
-        <h2>Blockchain Ledger & Audit Trail</h2>
-        <div class="status-row" id="ledger-status">
-          <span class="status-pill">Ledger height: —</span>
-          <span class="status-pill">Pending tx: —</span>
-          <span class="status-pill">Tip hash: —</span>
-          <span class="status-pill">Integrity: —</span>
-        </div>
-      </section>
-      <div class="ledger-grid">
-        <section class="panel">
-          <h2>Recent Blocks</h2>
-          <div class="ledger-feed" id="ledger-blocks">
-            <div class="analysis-sub">No blocks mined yet.</div>
-          </div>
-        </section>
-        <section class="panel">
-          <h2>Audit Log</h2>
-          <div class="audit-list" id="audit-log">
-            <div class="analysis-sub">Waiting for audit events...</div>
-          </div>
         </section>
       </div>
     </section>
