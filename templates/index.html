@@ -208,8 +208,8 @@
     .node:hover .actor-node-circle { transform: scale(1.05); box-shadow: var(--shadow-md); }
     .node.primary .actor-node-circle { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
     .actor-node-circle {
-      width: 88px;
-      height: 88px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
       border: 2px solid var(--border);
       background: var(--surface);
@@ -362,7 +362,12 @@
       transition: all 0.2s; 
       overflow: hidden; 
     } 
-    .node-circle.has-image { background: transparent; padding: 0; } 
+    .node-circle.has-image {
+      background: transparent;
+      padding: 0;
+      background-size: cover;
+      background-position: center;
+    }
     .node-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; } 
     .node-circle.image-fallback {
       background: var(--accent-soft);
@@ -655,8 +660,8 @@
   <script>
     const agentOrder = ["Economic Analyst", "Tax Advisor", "Policy Supporter", "Policy Opposer", "Policy Critic"];
     const landingMacro = document.getElementById('macro-grid-landing');
-    const imageBase = "{{ url_for('static', filename='images') }}";
-    const actorImageBase = imageBase;
+    const actorImageBase = "{{ url_for('static', filename='images') }}";
+    const nodeImageBase = "{{ url_for('static', filename='arr') }}";
 
     const agentData = {
       'Policy': { x: 40, y: 180, output: '', index: 'P', isPolicy: true },
@@ -910,23 +915,22 @@
         circle.textContent = data.index ?? '';
 
         if (data.image) {
-          const img = document.createElement('img');
-          img.src = `${imageBase}/${data.image}`;
+          const img = new Image();
+          const src = `${nodeImageBase}/${data.image}`;
           img.alt = `${name} avatar`;
-          img.className = 'node-image';
-          img.loading = 'lazy';
           img.addEventListener('load', () => {
             circle.classList.add('has-image');
+            circle.style.backgroundImage = `url('${src}')`;
             circle.classList.remove('image-fallback');
             circle.textContent = '';
           });
           img.addEventListener('error', () => {
-            img.remove();
+            circle.style.backgroundImage = '';
             circle.classList.remove('has-image');
             circle.classList.add('image-fallback');
             circle.textContent = data.index ?? '';
           });
-          circle.appendChild(img);
+          img.src = src;
         }
 
         const label = document.createElement('div');
