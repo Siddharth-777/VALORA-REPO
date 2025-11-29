@@ -68,10 +68,6 @@
     .metric .label { font-size: 12px; color: var(--muted); letter-spacing: 0.4px; text-transform: uppercase; }
     .metric .value { font-size: 18px; font-weight: 700; }
     .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-    .agents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; width: 100%; }
-    .agent-card { border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fafafa; min-height: 180px; }
-    .agent-card h3 { margin: 0; font-size: 14px; letter-spacing: 0.2px; }
-    .agent-output { border: 1px dashed var(--border); border-radius: 10px; padding: 10px; font-size: 13px; background: #fff; flex: 1; overflow: auto; white-space: pre-wrap; }
     .footer { border-top: 1px solid var(--border); padding: 14px 0 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
     .final-box { border: 1px dashed var(--border); padding: 10px 12px; border-radius: 10px; background: #f5f5f5; min-height: 70px; flex: 1; }
     .hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
@@ -92,7 +88,47 @@
     .chart-card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: #fafafa; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .chart-card h3 { margin: 0 0 12px 0; font-size: 14px; font-weight: 600; color: var(--muted); }
     input[type="number"] { width: 70px; background: #f8f8f8; color: var(--fg); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font-family: inherit; }
-    @media (max-width: 1000px) { .grid-main { grid-template-columns: 1fr; } }
+
+    /* Policy analysis console styling */
+    .analysis-console { border: 2px solid #000000; background: linear-gradient(135deg, #fafafa 0%, #ffffff 50%, #f5f5f5 100%); padding: 24px 18px; border-radius: 16px; box-shadow: 10px 10px 0 #000; }
+    .analysis-header { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 18px; position: relative; }
+    .analysis-header::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 120px; height: 2px; background: linear-gradient(90deg, #000, transparent); }
+    .analysis-title { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.3px; }
+    .analysis-sub { font-size: 13px; color: #666; }
+    .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .analysis-panel { border: 2px solid #000; background: #fff; padding: 16px; box-shadow: 6px 6px 0 #000; display: flex; flex-direction: column; gap: 14px; }
+    .analysis-panel h2 { font-size: 16px; margin: 0; letter-spacing: -0.2px; display: flex; gap: 8px; align-items: baseline; }
+    .metrics.new { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .metrics.new .metric-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; font-weight: 600; }
+    .metrics.new .metric-value { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    .workflow-container { position: relative; width: 100%; height: 420px; border: 2px solid #000; background: #fff; overflow: hidden; box-shadow: 8px 8px 0 #000; }
+    .workflow-container svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .workflow-node { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: transform 0.2s; z-index: 10; }
+    .workflow-node:hover { transform: scale(1.1); z-index: 20; }
+    .node-circle { width: 60px; height: 60px; border-radius: 50%; border: 3px solid #000; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; box-shadow: 0 4px 0 #000; transition: all 0.2s; }
+    .workflow-node.active .node-circle { background: #000; color: #fff; }
+    .workflow-node.processing .node-circle { animation: pulse 1.5s ease-in-out infinite; }
+    .workflow-node.policy .node-circle { background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%); font-size: 18px; }
+    .node-label { font-size: 11px; font-weight: 700; text-align: center; max-width: 100px; color: #000; text-transform: uppercase; letter-spacing: 0.5px; }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
+    .final-section { margin-top: 10px; padding-top: 14px; border-top: 2px solid #000; }
+    .final-output { border: 2px solid #000; padding: 14px; background: #fff; min-height: 100px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; box-shadow: 6px 6px 0 #000; }
+    .final-controls { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+    .analysis-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .analysis-controls .status { font-size: 13px; color: #666; font-weight: 600; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; animation: fadeIn 0.2s; }
+    .modal.active { display: flex; }
+    .modal-content { background: #fff; border: 3px solid #000; max-width: 600px; width: 90%; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 12px 12px 0 #000; animation: slideUp 0.3s; }
+    .modal-header { padding: 20px 24px; border-bottom: 2px solid #000; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%); }
+    .modal-title { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; text-transform: uppercase; }
+    .modal-close { background: #000; border: none; font-size: 20px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; transition: transform 0.2s; }
+    .modal-close:hover { transform: scale(1.1); }
+    .modal-body { padding: 24px; overflow-y: auto; font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    @media (max-width: 1100px) { .grid-main, .analysis-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .metrics.new { grid-template-columns: repeat(2, 1fr); } .workflow-container { height: 360px; } }
   </style>
 </head>
 <body>
@@ -135,27 +171,62 @@
     </section>
 
     <section class="page-section" data-section="analysis">
-      <div class="grid-main">
-        <section class="panel">
-          <h2>Policy Input <span class="subtext" id="cycle-pill">Cycle: loading…</span></h2>
-          <textarea id="policy-text" placeholder="Describe your policy. Example: Create a $15,000 refundable tax credit with an income phase-out starting at $180k, funded by a temporary 0.3% corporate surcharge."></textarea>
-          <div class="actions">
-            <button id="run-button">Send to 5 Agents</button>
-            <button class="secondary" id="reset-button">Reset session</button>
-            <span class="subtext" id="run-status">Waiting for input.</span>
-          </div>
-          <div class="macro-grid" id="macro-grid"></div>
-        </section>
+      <div class="analysis-console">
+        <div class="analysis-header">
+          <h2 class="analysis-title">Valora Analysis Console</h2>
+          <div class="analysis-sub">Policy analysis through five-agent orchestration</div>
+        </div>
 
-        <section class="panel">
-          <h2>Agent Outputs</h2>
-          <div class="agents-grid" id="agent-grid"></div>
-        </section>
+        <div class="analysis-grid">
+          <div class="analysis-panel">
+            <div>
+              <h2>Policy Input <span class="analysis-sub" id="cycle-pill">Cycle: —</span></h2>
+              <p class="analysis-sub">Enter policy description for analysis</p>
+            </div>
+            <textarea id="policy-text" placeholder="Example: Create a $15,000 refundable tax credit with an income phase-out starting at $180k, funded by a temporary 0.3% corporate surcharge."></textarea>
+            <div class="analysis-controls">
+              <button id="run-button">Run Analysis</button>
+              <button class="secondary" id="reset-button">Reset</button>
+              <span class="status" id="run-status">Ready</span>
+            </div>
+            <div>
+              <div class="analysis-controls" style="justify-content: space-between; padding-top: 4px;">
+                <span class="analysis-sub">Economic Indicators</span>
+              </div>
+              <div class="metrics new" id="macro-grid"></div>
+            </div>
+          </div>
+
+          <div class="analysis-panel">
+            <div>
+              <h2>Agent Workflow</h2>
+              <p class="analysis-sub">Click nodes to view agent output</p>
+            </div>
+            <div class="workflow-container" id="workflow">
+              <svg id="workflow-svg"></svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="final-section">
+          <div class="final-controls">
+            <button id="report-button">Download Report</button>
+          </div>
+          <div>
+            <h2 style="margin-bottom: 12px;">Consolidated Output</h2>
+            <div class="final-output" id="final-output">Analysis results will appear here after running the agents.</div>
+          </div>
+        </div>
       </div>
 
-      <div class="footer">
-        <button id="report-button">Download full report (.txt)</button>
-        <div class="final-box" id="final-output">Outputs will appear here after a run.</div>
+      <div class="modal" id="modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div class="modal-title" id="modal-title">Agent Output</div>
+            <button class="modal-close" id="modal-close">×</button>
+          </div>
+          <div class="modal-body" id="modal-body">No output available</div>
+        </div>
       </div>
     </section>
 
@@ -194,20 +265,35 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    const agentOrder = [
-      "Economic Analyst",
-      "Tax Advisor",
-      "Policy Supporter",
-      "Policy Opposer",
-      "Policy Critic"
+    const agentOrder = ["Economic Analyst", "Tax Advisor", "Policy Supporter", "Policy Opposer", "Policy Critic"];
+    const landingMacro = document.getElementById('macro-grid-landing');
+
+    const agentData = {
+      'Policy': { x: 40, y: 180, output: '', index: 'P', isPolicy: true },
+      'Economic Analyst': { x: 160, y: 180, output: '', index: 1 },
+      'Tax Advisor': { x: 300, y: 180, output: '', index: 2 },
+      'Policy Supporter': { x: 440, y: 120, output: '', index: 3 },
+      'Policy Opposer': { x: 440, y: 240, output: '', index: 4 },
+      'Policy Critic': { x: 580, y: 180, output: '', index: 5 }
+    };
+
+    const connections = [
+      { from: 'Policy', to: 'Economic Analyst' },
+      { from: 'Economic Analyst', to: 'Tax Advisor' },
+      { from: 'Tax Advisor', to: 'Policy Supporter' },
+      { from: 'Tax Advisor', to: 'Policy Opposer' },
+      { from: 'Policy Supporter', to: 'Policy Critic' },
+      { from: 'Policy Opposer', to: 'Policy Critic' }
     ];
 
-    const grid = document.getElementById('agent-grid');
-    const finalBox = document.getElementById('final-output');
+    const workflow = document.getElementById('workflow');
+    const svg = document.getElementById('workflow-svg');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
     const statusEl = document.getElementById('run-status');
-    const runButton = document.getElementById('run-button');
-    const reportButton = document.getElementById('report-button');
-    const landingMacro = document.getElementById('macro-grid-landing');
+    const finalBox = document.getElementById('final-output');
+    const policyTextarea = document.getElementById('policy-text');
 
     const policyInput = document.getElementById('sim-policy-text');
     const signalBadges = document.getElementById('signal-badges');
@@ -222,28 +308,11 @@
     let actorCharts = {};
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
 
-    function renderEmptyCards(message = 'Awaiting output') {
-      grid.innerHTML = '';
-      agentOrder.forEach(name => {
-        const card = document.createElement('div');
-        card.className = 'agent-card';
-        card.innerHTML = `<h3>${name}</h3><div class="agent-output">${message}</div>`;
-        grid.appendChild(card);
-      });
-    }
-
-    renderEmptyCards();
-
     function setActiveSection(target) {
       const sections = document.querySelectorAll('.page-section');
       const buttons = document.querySelectorAll('.tab-btn');
-      sections.forEach(sec => {
-        sec.classList.toggle('active', sec.dataset.section === target);
-      });
-      buttons.forEach(btn => {
-        const isMatch = btn.dataset.target === target;
-        btn.classList.toggle('active', isMatch);
-      });
+      sections.forEach(sec => { sec.classList.toggle('active', sec.dataset.section === target); });
+      buttons.forEach(btn => { const isMatch = btn.dataset.target === target; btn.classList.toggle('active', isMatch); });
       const params = new URLSearchParams(window.location.search);
       params.set('tab', target);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
@@ -251,9 +320,7 @@
     }
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      if (btn.dataset.target) {
-        btn.addEventListener('click', () => setActiveSection(btn.dataset.target));
-      }
+      if (btn.dataset.target) { btn.addEventListener('click', () => setActiveSection(btn.dataset.target)); }
     });
 
     function startFromQuery() {
@@ -262,11 +329,53 @@
       if (tab) setActiveSection(tab);
     }
 
-    async function fetchJSON(url, options={}) {
+    async function fetchJSON(url, options = {}) {
       const res = await fetch(url, options);
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       return res.headers.get('content-type')?.includes('application/json') ? res.json() : res.text();
     }
+
+    function drawConnections() {
+      svg.innerHTML = '';
+      connections.forEach(conn => {
+        const from = agentData[conn.from];
+        const to = agentData[conn.to];
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', from.x + 30);
+        line.setAttribute('y1', from.y + 30);
+        line.setAttribute('x2', to.x + 30);
+        line.setAttribute('y2', to.y + 30);
+        line.setAttribute('stroke', '#cccccc');
+        line.setAttribute('stroke-width', '3');
+        svg.appendChild(line);
+      });
+    }
+
+    function createNodes() {
+      Object.entries(agentData).forEach(([name, data]) => {
+        const node = document.createElement('div');
+        node.className = 'workflow-node';
+        if (data.isPolicy) node.classList.add('policy');
+        node.style.left = data.x + 'px';
+        node.style.top = data.y + 'px';
+        node.innerHTML = `<div class="node-circle">${data.index}</div><div class="node-label">${name}</div>`;
+        node.addEventListener('click', () => openModal(name));
+        workflow.appendChild(node);
+      });
+    }
+
+    function openModal(agentName) {
+      modalTitle.textContent = agentName;
+      if (agentName === 'Policy') {
+        const policyText = policyTextarea.value.trim();
+        modalBody.textContent = policyText || 'No policy entered yet';
+      } else {
+        modalBody.textContent = agentData[agentName].output || 'No output available yet';
+      }
+      modal.classList.add('active');
+    }
+
+    function closeModal() { modal.classList.remove('active'); }
 
     async function loadIndicators() {
       try {
@@ -284,7 +393,7 @@
         entries.forEach(([label, value]) => {
           const div = document.createElement('div');
           div.className = 'metric';
-          div.innerHTML = `<div class="label">${label}</div><div class="value">${value ?? '—'}</div>`;
+          div.innerHTML = `<div class="metric-label">${label}</div><div class="metric-value">${value ?? '—'}</div>`;
           macroGrid.appendChild(div.cloneNode(true));
           landingMacro.appendChild(div);
         });
@@ -295,40 +404,41 @@
     }
 
     async function runAgents() {
-      const policyText = document.getElementById('policy-text').value.trim();
-      if (!policyText) {
-        statusEl.textContent = 'Please enter a policy first.';
-        return;
-      }
-      statusEl.textContent = 'Running crew…';
-      renderEmptyCards('Running…');
+      const policyText = policyTextarea.value.trim();
+      if (!policyText) { statusEl.textContent = 'Please enter a policy description'; return; }
+      statusEl.textContent = 'Running analysis...';
+      document.querySelectorAll('.workflow-node:not(.policy)').forEach(n => { n.classList.remove('active'); n.classList.add('processing'); });
+
       try {
         const result = await fetchJSON('/api/agents/run', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: policyText })
         });
-        grid.innerHTML = '';
-        agentOrder.forEach(name => {
-          const entry = (result.agents || []).find(a => a.agent === name) || {};
-          const card = document.createElement('div');
-          card.className = 'agent-card';
-          card.innerHTML = `<h3>${name}</h3><div class="agent-output">${entry.output || 'No output recorded.'}</div>`;
-          grid.appendChild(card);
+
+        document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('processing'));
+
+        (result.agents || []).forEach(agent => {
+          if (agentData[agent.agent]) {
+            agentData[agent.agent].output = agent.output || 'No output recorded';
+            const nodeEl = Array.from(document.querySelectorAll('.workflow-node')).find(n => n.querySelector('.node-label').textContent === agent.agent);
+            if (nodeEl) nodeEl.classList.add('active');
+          }
         });
-        finalBox.textContent = result.final_output || 'No final output.';
-        statusEl.textContent = 'Crew completed.';
+
+        finalBox.textContent = result.final_output || 'No consolidated output available';
+        statusEl.textContent = 'Analysis complete';
       } catch (err) {
-        renderEmptyCards('Run failed.');
+        document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('processing'));
         finalBox.textContent = err.message;
-        statusEl.textContent = err.message;
+        statusEl.textContent = 'Error: ' + err.message;
       }
     }
 
     async function downloadReport() {
       try {
         const res = await fetch('/api/agents/report');
-        if (!res.ok) throw new Error('No report available. Run the crew first.');
+        if (!res.ok) throw new Error('No report available. Run analysis first.');
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -345,10 +455,11 @@
 
     async function resetSession() {
       await fetch('/reset_session', { method: 'POST' });
-      document.getElementById('policy-text').value = '';
-      renderEmptyCards();
-      finalBox.textContent = 'Outputs will appear here after a run.';
-      statusEl.textContent = 'Session reset.';
+      policyTextarea.value = '';
+      Object.keys(agentData).forEach(key => agentData[key].output = '');
+      document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('active', 'processing'));
+      finalBox.textContent = 'Analysis results will appear here after running the agents.';
+      statusEl.textContent = 'Session reset';
       loadIndicators();
     }
 
@@ -420,36 +531,9 @@
         data: {
           labels,
           datasets: [
-            {
-              label: 'GDP',
-              data: globalSeries.map((g) => g.gdp),
-              borderColor: '#0066cc',
-              backgroundColor: 'rgba(0, 102, 204, 0.1)',
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
-            {
-              label: 'Inflation',
-              data: globalSeries.map((g) => g.inflation),
-              borderColor: '#ff6b35',
-              backgroundColor: 'rgba(255, 107, 53, 0.1)',
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
-            {
-              label: 'Unemployment',
-              data: globalSeries.map((g) => g.unemployment),
-              borderColor: '#d62828',
-              backgroundColor: 'rgba(214, 40, 40, 0.1)',
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
+            { label: 'GDP', data: globalSeries.map((g) => g.gdp), borderColor: '#0066cc', backgroundColor: 'rgba(0, 102, 204, 0.1)', tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 },
+            { label: 'Inflation', data: globalSeries.map((g) => g.inflation), borderColor: '#ff6b35', backgroundColor: 'rgba(255, 107, 53, 0.1)', tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 },
+            { label: 'Unemployment', data: globalSeries.map((g) => g.unemployment), borderColor: '#d62828', backgroundColor: 'rgba(214, 40, 40, 0.1)', tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 },
           ],
         },
         options: {
@@ -457,32 +541,12 @@
           maintainAspectRatio: true,
           aspectRatio: 2.5,
           plugins: {
-            legend: {
-              labels: {
-                color: '#0c0c0c',
-                font: { size: 12, weight: '600' },
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle'
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              padding: 12,
-              titleFont: { size: 13, weight: '600' },
-              bodyFont: { size: 12 }
-            }
+            legend: { labels: { color: '#0c0c0c', font: { size: 12, weight: '600' }, padding: 15, usePointStyle: true, pointStyle: 'circle' } },
+            tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 12, titleFont: { size: 13, weight: '600' }, bodyFont: { size: 12 } }
           },
           scales: {
-            x: {
-              ticks: { color: '#3a3a3a', font: { size: 11 } },
-              grid: { color: '#e5e5e5', drawBorder: false }
-            },
-            y: {
-              ticks: { color: '#3a3a3a', font: { size: 11 } },
-              grid: { color: '#e5e5e5', drawBorder: false },
-              beginAtZero: false
-            },
+            x: { ticks: { color: '#3a3a3a', font: { size: 11 } }, grid: { color: '#e5e5e5', drawBorder: false } },
+            y: { ticks: { color: '#3a3a3a', font: { size: 11 } }, grid: { color: '#e5e5e5', drawBorder: false }, beginAtZero: false },
           },
         },
       });
@@ -510,43 +574,15 @@
         const color = colors[idx % colors.length];
         actorCharts[actor] = new Chart(canvas.getContext('2d'), {
           type: 'line',
-          data: {
-            labels,
-            datasets: [{
-              label: actor,
-              data: series,
-              borderColor: color,
-              backgroundColor: `${color}1a`,
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5,
-              fill: true
-            }],
-          },
+          data: { labels, datasets: [{ label: actor, data: series, borderColor: color, backgroundColor: `${color}1a`, tension: 0.4, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, fill: true }] },
           options: {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.8,
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                padding: 10,
-                titleFont: { size: 12 },
-                bodyFont: { size: 11 }
-              }
-            },
+            plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', padding: 10, titleFont: { size: 12 }, bodyFont: { size: 11 } } },
             scales: {
-              x: {
-                ticks: { color: '#3a3a3a', font: { size: 10 } },
-                grid: { color: '#e5e5e5', drawBorder: false }
-              },
-              y: {
-                ticks: { color: '#3a3a3a', font: { size: 10 } },
-                grid: { color: '#e5e5e5', drawBorder: false },
-                beginAtZero: false
-              },
+              x: { ticks: { color: '#3a3a3a', font: { size: 10 } }, grid: { color: '#e5e5e5', drawBorder: false } },
+              y: { ticks: { color: '#3a3a3a', font: { size: 10 } }, grid: { color: '#e5e5e5', drawBorder: false }, beginAtZero: false },
             },
           },
         });
@@ -556,10 +592,7 @@
     async function runSimulation() {
       const policy = policyInput.value.trim();
       const steps = Number(stepsInput.value) || 8;
-      if (!policy) {
-        statusText.textContent = 'Please enter a policy first';
-        return;
-      }
+      if (!policy) { statusText.textContent = 'Please enter a policy first'; return; }
       statusText.textContent = 'Running simulation...';
       selectionPill.textContent = 'Running...';
 
@@ -585,19 +618,19 @@
       }
     }
 
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('run-button').addEventListener('click', runAgents);
-    reportButton.addEventListener('click', downloadReport);
+    document.getElementById('report-button').addEventListener('click', downloadReport);
     document.getElementById('reset-button').addEventListener('click', resetSession);
-
     document.getElementById('run-btn').addEventListener('click', runSimulation);
-    document.getElementById('fill-btn').addEventListener('click', () => {
-      policyInput.value = samplePolicy;
-      statusText.textContent = 'Sample policy loaded';
-    });
+    document.getElementById('fill-btn').addEventListener('click', () => { policyInput.value = samplePolicy; statusText.textContent = 'Sample policy loaded'; });
 
     renderSignals({});
     renderPentagonNodes([]);
     loadIndicators();
+    drawConnections();
+    createNodes();
     startFromQuery();
   </script>
 </body>
