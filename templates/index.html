@@ -246,14 +246,12 @@
     }
     .analysis-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.3px; }
     .analysis-sub { font-size: 13px; color: var(--muted); font-weight: 400; }
-    .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .analysis-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: start; }
     .wide-panel { grid-column: 1 / -1; }
-    .debate-thread { display: flex; flex-direction: column; gap: 12px; }
-    .debate-exchange { display: grid; grid-template-columns: 1fr 7fr; gap: 10px; align-items: start; }
-    .debate-speaker { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.2px; text-transform: uppercase; }
-    .debate-bubble { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface); box-shadow: var(--shadow-sm); }
-    .debate-bubble strong { color: var(--fg); }
-    .debate-bubble .tag { display: inline-block; padding: 4px 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; margin-right: 8px; }
+    .debate-thread { display: flex; flex-direction: column; gap: 10px; }
+    .debate-exchange { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+    .debate-avatar { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--surface); font-weight: 700; font-size: 13px; box-shadow: var(--shadow-sm); }
+    .debate-bubble { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); box-shadow: var(--shadow-sm); font-size: 13px; line-height: 1.6; animation: slideUp 0.25s ease; }
     .analysis-panel { 
       border: 1px solid var(--border);
       background: var(--surface);
@@ -629,10 +627,13 @@
     const auditLog = document.getElementById('audit-log');
     const ledgerStatus = document.getElementById('ledger-status');
     const debateThread = document.getElementById('debate-thread');
+    const supporterColor = '#0066cc';
+    const opposerColor = '#d62828';
 
     let globalChart;
     let actorCharts = {};
     let ledgerInterval;
+    let debateTimers = [];
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
     const defaultImpact = [
       { name: 'Small Firms', score: 0.59 },
@@ -842,6 +843,7 @@
       const policyText = policyTextarea.value.trim();
       if (!policyText) { statusEl.textContent = 'Please enter a policy description'; return; }
       statusEl.textContent = 'Running analysis...';
+      showDebatePlaceholder();
       document.querySelectorAll('.workflow-node:not(.policy)').forEach(n => { n.classList.remove('active'); n.classList.add('processing'); });
 
       try {
@@ -863,11 +865,13 @@
 
         finalBox.innerHTML = formatOutput(result.final_output || 'No consolidated output available');
         renderAgentCards();
+        renderDebate(result.debate || sampleDebate);
         statusEl.textContent = 'Analysis complete';
       } catch (err) {
         document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('processing'));
         finalBox.innerHTML = formatOutput(err.message);
         statusEl.textContent = 'Error: ' + err.message;
+        showDebatePlaceholder();
       }
     }
 
@@ -898,6 +902,7 @@
       renderAgentCards();
       statusEl.textContent = 'Session reset';
       loadIndicators();
+      showDebatePlaceholder();
     }
 
     function renderSignals(signals) {
@@ -1064,25 +1069,45 @@
       }
     }
 
+    function clearDebateTimers() {
+      debateTimers.forEach(clearTimeout);
+      debateTimers = [];
+    }
+
+    function showDebatePlaceholder() {
+      if (!debateThread) return;
+      clearDebateTimers();
+      debateThread.innerHTML = '<div class="analysis-sub">Run analysis to view the debate.</div>';
+    }
+
+    function appendDebateRow({ stance, message }) {
+      const row = document.createElement('div');
+      row.className = 'debate-exchange';
+
+      const avatar = document.createElement('div');
+      const isSupporter = (stance || '').toLowerCase().includes('support');
+      avatar.className = 'debate-avatar';
+      avatar.style.background = isSupporter ? supporterColor : opposerColor;
+      avatar.textContent = isSupporter ? 'S' : 'O';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'debate-bubble';
+      bubble.textContent = message || 'No message available.';
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      debateThread.appendChild(row);
+      debateThread.scrollTop = debateThread.scrollHeight;
+    }
+
     function renderDebate(exchanges) {
       if (!debateThread) return;
+      clearDebateTimers();
       debateThread.innerHTML = '';
       const items = exchanges && exchanges.length ? exchanges : sampleDebate;
-      items.forEach(({ speaker, stance, message }) => {
-        const row = document.createElement('div');
-        row.className = 'debate-exchange';
-
-        const label = document.createElement('div');
-        label.className = 'debate-speaker';
-        label.textContent = speaker;
-
-        const bubble = document.createElement('div');
-        bubble.className = 'debate-bubble';
-        bubble.innerHTML = `<span class="tag">${escapeHTML(stance)}</span>${formatInline(escapeHTML(message || 'No message'))}`;
-
-        row.appendChild(label);
-        row.appendChild(bubble);
-        debateThread.appendChild(row);
+      items.forEach((entry, idx) => {
+        const timer = setTimeout(() => appendDebateRow(entry), idx * 450);
+        debateTimers.push(timer);
       });
     }
 
@@ -1226,7 +1251,7 @@
     renderSignals({});
     renderPentagonNodes([]);
     renderTopActors(defaultImpact);
-    renderDebate(sampleDebate);
+    showDebatePlaceholder();
     loadIndicators();
     drawConnections();
     createNodes();
