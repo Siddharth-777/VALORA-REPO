@@ -136,7 +136,7 @@ except Exception:
             }
 
 
-MODEL_ID = os.getenv("GROQ_MODEL", "groq/meta-llama/llama-guard-4-12b")
+MODEL_ID = os.getenv("GROQ_MODEL", "groq/llama-3.1-8b-instant")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")  # must be set in env
 PORT = int(os.getenv("PORT", 5004))
 # Cap completions so each agent respects the 300-word output ceiling while staying under TPM limits.
@@ -1240,10 +1240,14 @@ def run_policy_simulation():
 
 @app.route("/simulation")
 def simulation_page():
-    return redirect(url_for("index", tab="simulation"))
+    return render_template("simulation.html")
 
 @app.route("/")
-def index():
+def landing_page():
+    return render_template("landing.html")
+
+@app.route("/studio")
+def studio():
     sid = _ensure_session_state()
     return render_template(
         "index.html",
