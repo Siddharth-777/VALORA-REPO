@@ -181,7 +181,7 @@
     }
     .pentagon-area {
       position: relative;
-      height: 320px;
+      height: 380px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -235,13 +235,24 @@
       font-size: 13px;
       overflow: hidden;
       box-shadow: var(--shadow-sm);
+      position: relative;
     }
-    .actor-avatar img {
+    .actor-avatar.fallback {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .actor-avatar.has-image {
+      border-color: transparent;
+      background: var(--surface);
+    }
+    .actor-avatar .avatar-img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
+      display: none;
     }
+    .actor-avatar.has-image .avatar-img { display: block; }
     .node .actor-avatar {
       width: 48px;
       height: 48px;
@@ -335,7 +346,11 @@
     } 
     .node-circle.has-image { background: transparent; padding: 0; } 
     .node-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; } 
-    .node-circle.image-fallback { background: var(--surface); } 
+    .node-circle.image-fallback {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
     .workflow-node.active .node-circle { background: var(--fg); color: var(--surface); border-color: var(--fg); } 
     .workflow-node.active .node-circle.has-image { background: transparent; box-shadow: 0 0 0 3px var(--accent-soft); } 
     .workflow-node.processing .node-circle { animation: pulse 1.5s ease-in-out infinite; } 
@@ -701,14 +716,17 @@
 
       if (info.file) {
         const img = document.createElement('img');
+        img.className = 'avatar-img';
         img.src = `${actorImageBase}/${info.file}`;
         img.alt = `${name} photo`;
         img.loading = 'lazy';
         img.addEventListener('load', () => {
           avatar.textContent = '';
           avatar.classList.remove('fallback');
+          avatar.classList.add('has-image');
         });
         img.addEventListener('error', () => {
+          avatar.classList.remove('has-image');
           avatar.classList.add('fallback');
           img.remove();
           if (!avatar.textContent && info.index !== undefined) {
@@ -1041,7 +1059,7 @@
       }
       const centerX = pentagon.clientWidth / 2;
       const centerY = pentagon.clientHeight / 2;
-      const radius = Math.min(centerX, centerY) - 40;
+      const radius = Math.min(centerX, centerY) - 24;
       actors.forEach((actor, idx) => {
         const angle = (Math.PI * 2 * idx) / actors.length - Math.PI / 2;
         const x = centerX + radius * Math.cos(angle) - 44;
