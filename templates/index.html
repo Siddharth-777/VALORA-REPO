@@ -179,9 +179,9 @@
       color: var(--muted);
       font-weight: 500;
     }
-    .pentagon-area { 
+    .pentagon-area {
       position: relative;
-      height: 280px;
+      height: 320px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -703,11 +703,18 @@
         const img = document.createElement('img');
         img.src = `${actorImageBase}/${info.file}`;
         img.alt = `${name} photo`;
+        img.loading = 'lazy';
         img.addEventListener('load', () => {
           avatar.textContent = '';
           avatar.classList.remove('fallback');
         });
-        img.addEventListener('error', () => { img.remove(); });
+        img.addEventListener('error', () => {
+          avatar.classList.add('fallback');
+          img.remove();
+          if (!avatar.textContent && info.index !== undefined) {
+            avatar.textContent = info.index;
+          }
+        });
         avatar.appendChild(img);
       }
 
@@ -866,23 +873,27 @@
         node.style.left = data.x + 'px';
         node.style.top = data.y + 'px';
         const circle = document.createElement('div');
-        circle.className = 'node-circle';
+        circle.className = 'node-circle image-fallback';
+        circle.textContent = data.index ?? '';
 
         if (data.image) {
-          circle.classList.add('has-image');
           const img = document.createElement('img');
           img.src = `${imageBase}/${data.image}`;
           img.alt = `${name} avatar`;
           img.className = 'node-image';
+          img.loading = 'lazy';
+          img.addEventListener('load', () => {
+            circle.classList.add('has-image');
+            circle.classList.remove('image-fallback');
+            circle.textContent = '';
+          });
           img.addEventListener('error', () => {
             img.remove();
             circle.classList.remove('has-image');
             circle.classList.add('image-fallback');
-            circle.textContent = data.index;
+            circle.textContent = data.index ?? '';
           });
           circle.appendChild(img);
-        } else {
-          circle.textContent = data.index;
         }
 
         const label = document.createElement('div');
@@ -1030,7 +1041,7 @@
       }
       const centerX = pentagon.clientWidth / 2;
       const centerY = pentagon.clientHeight / 2;
-      const radius = Math.min(centerX, centerY) - 60;
+      const radius = Math.min(centerX, centerY) - 40;
       actors.forEach((actor, idx) => {
         const angle = (Math.PI * 2 * idx) / actors.length - Math.PI / 2;
         const x = centerX + radius * Math.cos(angle) - 44;
