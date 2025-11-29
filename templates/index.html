@@ -179,36 +179,48 @@
       color: var(--muted);
       font-weight: 500;
     }
-    .pentagon-area { 
+    .pentagon-area {
       position: relative;
-      height: 280px;
+      height: 430px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
+      padding: 6px;
     }
     .node {
       position: absolute;
+      width: 130px;
+      height: 140px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      color: var(--fg);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .node:hover .actor-node-circle { transform: scale(1.05); box-shadow: var(--shadow-md); }
+    .node.primary .actor-node-circle { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+    .actor-node-circle {
       width: 88px;
-      height: 92px;
-      border-radius: 12px;
+      height: 88px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
       background: var(--surface);
-      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      text-align: center;
-      padding: 10px;
-      color: var(--fg);
-      font-size: 11px;
-      font-weight: 600;
       box-shadow: var(--shadow-sm);
-      gap: 8px;
-      transition: all 0.2s;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    .node:hover { box-shadow: var(--shadow-md); transform: scale(1.05); }
-    .node.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
     .node-labels { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
     .label-card {
       border: 1px solid var(--border);
@@ -222,11 +234,11 @@
     }
     .actor-card-header { display: flex; align-items: center; gap: 10px; }
     .actor-avatar {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: linear-gradient(135deg, var(--accent-soft), #f5f9ff);
+      border: 2px solid var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -235,18 +247,35 @@
       font-size: 13px;
       overflow: hidden;
       box-shadow: var(--shadow-sm);
+      position: relative;
     }
-    .actor-avatar img {
+    .actor-avatar .avatar-img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
+      opacity: 0;
+      transition: opacity 0.2s ease;
     }
-    .node .actor-avatar {
-      width: 48px;
-      height: 48px;
+    .avatar-badge {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
     }
-    .actor-node-label { line-height: 1.3; }
+    .actor-avatar.has-image {
+      border-color: transparent;
+      background: var(--surface);
+      color: var(--surface);
+    }
+    .actor-avatar.has-image .avatar-img { opacity: 1; }
+    .actor-avatar.has-image .avatar-badge { opacity: 0; }
+    .actor-card .actor-avatar { width: 48px; height: 48px; }
+    .node .actor-avatar { width: 68px; height: 68px; }
+    .actor-node-label { line-height: 1.3; font-size: 12px; }
     .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
     .charts-stack { display: flex; flex-direction: column; gap: 14px; }
     .chart-card {
@@ -335,7 +364,11 @@
     } 
     .node-circle.has-image { background: transparent; padding: 0; } 
     .node-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; } 
-    .node-circle.image-fallback { background: var(--surface); } 
+    .node-circle.image-fallback {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
     .workflow-node.active .node-circle { background: var(--fg); color: var(--surface); border-color: var(--fg); } 
     .workflow-node.active .node-circle.has-image { background: transparent; box-shadow: 0 0 0 3px var(--accent-soft); } 
     .workflow-node.processing .node-circle { animation: pulse 1.5s ease-in-out infinite; } 
@@ -696,18 +729,25 @@
       if (!info) return null;
 
       const avatar = document.createElement('div');
-      avatar.className = 'actor-avatar fallback';
-      if (info.index !== undefined) avatar.textContent = info.index;
+      avatar.className = 'actor-avatar';
+
+      const badge = document.createElement('span');
+      badge.className = 'avatar-badge';
+      badge.textContent = info.index ?? '';
+      avatar.appendChild(badge);
 
       if (info.file) {
         const img = document.createElement('img');
+        img.className = 'avatar-img';
         img.src = `${actorImageBase}/${info.file}`;
         img.alt = `${name} photo`;
+        img.loading = 'lazy';
         img.addEventListener('load', () => {
-          avatar.textContent = '';
-          avatar.classList.remove('fallback');
+          avatar.classList.add('has-image');
         });
-        img.addEventListener('error', () => { img.remove(); });
+        img.addEventListener('error', () => {
+          avatar.classList.remove('has-image');
+        });
         avatar.appendChild(img);
       }
 
@@ -866,23 +906,27 @@
         node.style.left = data.x + 'px';
         node.style.top = data.y + 'px';
         const circle = document.createElement('div');
-        circle.className = 'node-circle';
+        circle.className = 'node-circle image-fallback';
+        circle.textContent = data.index ?? '';
 
         if (data.image) {
-          circle.classList.add('has-image');
           const img = document.createElement('img');
           img.src = `${imageBase}/${data.image}`;
           img.alt = `${name} avatar`;
           img.className = 'node-image';
+          img.loading = 'lazy';
+          img.addEventListener('load', () => {
+            circle.classList.add('has-image');
+            circle.classList.remove('image-fallback');
+            circle.textContent = '';
+          });
           img.addEventListener('error', () => {
             img.remove();
             circle.classList.remove('has-image');
             circle.classList.add('image-fallback');
-            circle.textContent = data.index;
+            circle.textContent = data.index ?? '';
           });
           circle.appendChild(img);
-        } else {
-          circle.textContent = data.index;
         }
 
         const label = document.createElement('div');
@@ -1030,23 +1074,33 @@
       }
       const centerX = pentagon.clientWidth / 2;
       const centerY = pentagon.clientHeight / 2;
-      const radius = Math.min(centerX, centerY) - 60;
+      const nodeWidth = 130;
+      const nodeHeight = 140;
+      const radius = Math.min(centerX, centerY) - 70;
       actors.forEach((actor, idx) => {
         const angle = (Math.PI * 2 * idx) / actors.length - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle) - 44;
-        const y = centerY + radius * Math.sin(angle) - 46;
+        const x = centerX + radius * Math.cos(angle) - nodeWidth / 2;
+        const y = centerY + radius * Math.sin(angle) - nodeHeight / 2;
         const node = document.createElement('div');
         node.className = `node ${idx === 0 ? 'primary' : ''}`;
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
-        node.textContent = '';
+
+        const circle = document.createElement('div');
+        circle.className = 'actor-node-circle';
 
         const avatar = createActorAvatar(actor);
-        if (avatar) node.appendChild(avatar);
+        if (avatar) {
+          circle.appendChild(avatar);
+        } else {
+          circle.textContent = idx + 1;
+        }
 
         const label = document.createElement('div');
         label.className = 'actor-node-label';
         label.textContent = actor;
+
+        node.appendChild(circle);
         node.appendChild(label);
         pentagon.appendChild(node);
       });
