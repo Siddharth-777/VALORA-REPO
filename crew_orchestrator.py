@@ -15,6 +15,7 @@ import importlib.util
 import io
 import json
 import os
+import random
 import threading
 import time
 import traceback
@@ -436,6 +437,8 @@ class BlockchainIntegration:
         self.pending_transactions: List[dict] = []
         self.audit_log: List[dict] = []
         self.lock = threading.Lock()
+        self._mock_thread: threading.Thread | None = None
+        self._mock_running = False
 
     def _hash_json(self, data: dict | list) -> str:
         return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
@@ -520,6 +523,67 @@ class BlockchainIntegration:
             )
             return block
 
+    def _mock_stream_loop(self):
+        participants = ["treasury", "central_bank", "bond_desk", "loan_pool", "validator"]
+        branches = ["equities", "fixed_income", "fx", "commodities", "derivatives"]
+        while self._mock_running:
+            sender = random.choice(participants)
+            receiver = random.choice([p for p in participants if p != sender])
+            amount = round(random.uniform(50.0, 5000.0), 2)
+            memo = f"policy-linked settlement via {random.choice(branches)}"
+            tx = {
+                "from": sender,
+                "to": receiver,
+                "amount": amount,
+                "memo": memo,
+            }
+            try:
+                added = self.add_transaction(tx)
+                with self.lock:
+                            self.audit_log.append(
+                                {
+                                    "timestamp": added["timestamp"],
+                                    "action": "mock_tx_generated",
+                                    "tx_id": added.get("id"),
+                                    "from": sender,
+                                    "to": receiver,
+                                    "amount": amount,
+                                    "memo": memo,
+                                }
+                            )
+            except Exception:
+                traceback.print_exc()
+
+            # opportunistically mine when a few transactions accumulate
+            with self.lock:
+                pending_count = len(self.pending_transactions)
+            if pending_count >= random.randint(2, 4):
+                mined = self.mine_block()
+                if mined:
+                    with self.lock:
+                        self.audit_log.append(
+                            {
+                                "timestamp": mined["timestamp"],
+                                "action": "mock_block_mined",
+                                "block_index": mined.get("index"),
+                                "hash": mined.get("hash"),
+                                "tx_count": len(mined.get("transactions", [])),
+                            }
+                        )
+
+            time.sleep(random.uniform(1.0, 3.0))
+
+    def start_mock_audit_stream(self):
+        """Begin continuous mock blockchain activity after policy analysis."""
+        with self.lock:
+            if self._mock_running:
+                return False
+            self._mock_running = True
+
+        self._mock_thread = threading.Thread(target=self._mock_stream_loop, daemon=True)
+        self._mock_thread.start()
+        return True
+
     def verify_chain(self) -> Tuple[bool, List[str]]:
         errors = []
         with self.lock:
@@ -534,6 +598,15 @@ class BlockchainIntegration:
                 if block.get("hash") != recalculated:
                     errors.append(f"Block {block.get('index')} hash invalid")
         return len(errors) == 0, errors
+
+    def status_snapshot(self):
+        with self.lock:
+            return {
+                "ledger_height": len(self.ledger),
+                "pending_count": len(self.pending_transactions),
+                "tip_hash": self.ledger[-1]["hash"] if self.ledger else None,
+                "mock_running": self._mock_running,
+            }
 
     def get_block(self, index: int):
         with self.lock:
@@ -683,6 +756,19 @@ class PolicyExperimentationManager:
         }
         serializable_record = _coerce_json_safe(record)
         self.proposals.append(serializable_record)
+        try:
+            mock_started = blockchain.start_mock_audit_stream()
+            if mock_started:
+                with blockchain.lock:
+                    blockchain.audit_log.append(
+                        {
+                            "timestamp": datetime.now().isoformat(),
+                            "action": "mock_stream_started",
+                            "reason": "policy_analysis_completed",
+                        }
+                    )
+        except Exception:
+            traceback.print_exc()
         return serializable_record
 
     def list_policies(self):
@@ -1070,6 +1156,20 @@ def api_agents_run():
         "final_output": _stringify_task_output(final_output),
     }
 
+    try:
+        mock_started = blockchain.start_mock_audit_stream()
+        if mock_started:
+            with blockchain.lock:
+                blockchain.audit_log.append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "action": "mock_stream_started",
+                        "reason": "agent_policy_analysis_completed",
+                    }
+                )
+    except Exception:
+        traceback.print_exc()
+
     return jsonify({
         "policy": policy_text,
         "final_output": _stringify_task_output(final_output),
@@ -1207,7 +1307,16 @@ def api_block_detail(index: int):
 @app.route("/api/blockchain/verify", methods=["GET"])
 def api_verify_chain():
     ok, errors = blockchain.verify_chain()
-    return jsonify({"valid": ok, "errors": errors, "audit": blockchain.get_audit_log(25)})
+    snapshot = blockchain.status_snapshot()
+    return jsonify({
+        "valid": ok,
+        "errors": errors,
+        "audit": blockchain.get_audit_log(25),
+        "mock_running": snapshot.get("mock_running"),
+        "ledger_height": snapshot.get("ledger_height"),
+        "tip_hash": snapshot.get("tip_hash"),
+        "pending_count": snapshot.get("pending_count"),
+    })
 
 
 @app.route("/api/blockchain/audit", methods=["GET"])
