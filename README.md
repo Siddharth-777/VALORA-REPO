@@ -1,6 +1,7 @@
 # Valora: Agentic AI Economic Simulation
 
 Valora is a teaching/demo project that simulates a small economy with AI-driven actors. It blends machine learning “brains,” CrewAI orchestration, and a lightweight Flask API to explore how consumers, firms, banks, and regulators react to changing macro conditions and policy shocks.
+https://youtu.be/NK_dIS0srhw-VIDEO OF PROTOTYPE
 
 ## What this project does
 - **Economic sandbox**: Steps through business cycles (expansion → peak → recession → trough) while tracking GDP, inflation, unemployment, and consumer confidence.
