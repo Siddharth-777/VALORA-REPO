@@ -1240,7 +1240,7 @@ def run_policy_simulation():
 
 @app.route("/simulation")
 def simulation_page():
-    return render_template("simulation.html")
+    return redirect(url_for("index", tab="simulation"))
 
 @app.route("/")
 def index():
