@@ -81,28 +81,37 @@
       resize: vertical; 
       font-family: inherit;
     }
-    button { 
-      font-family: inherit; 
-      font-size: 14px; 
-      padding: 12px 16px; 
-      border-radius: 12px; 
-      border: 1px solid var(--border); 
-      background: var(--fg); 
-      color: #fff; 
-      cursor: pointer; 
+    button {
+      font-family: inherit;
+      font-size: 14px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--fg);
+      color: #fff;
+      cursor: pointer;
       font-weight: 600;
       transition: opacity 0.2s;
     }
     button:hover { opacity: 0.85; }
-    button.secondary { 
-      background: #fff; 
-      color: var(--fg); 
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
-    .actions { 
-      display: flex; 
-      gap: 10px; 
-      flex-wrap: wrap; 
-      align-items: center; 
+    button.secondary {
+      background: #fff;
+      color: var(--fg);
+    }
+    .pill.accent {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
     }
     .subtext { 
       font-size: 13px; 
@@ -198,6 +207,33 @@
       flex-wrap: wrap;
       margin: 6px 0 10px;
     }
+    .microcopy {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .shock-card {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfcfc;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .shock-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .shock-badge {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 12px;
+      background: #fff;
+      font-weight: 600;
+    }
     .toggle-btn {
       padding: 8px 10px;
       border-radius: 10px;
@@ -247,6 +283,21 @@
         <button class="secondary" id="fill-btn">Use sample policy</button>
         <span class="subtext">Time steps: <input type="number" id="steps" value="14" min="3" max="24" /></span>
       </div>
+      <div class="shock-card">
+        <div class="actions" style="justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div class="subtext">Shock scenario (mock)</div>
+            <div class="microcopy">Applies a fictional negative impact after the simulation completes.</div>
+          </div>
+          <div class="shock-badge" id="shock-status">Awaiting simulation</div>
+        </div>
+        <textarea id="shock-text" placeholder="Ex: Global energy crisis triggers credit crunch and demand shock." disabled></textarea>
+        <div class="shock-controls">
+          <button id="shock-btn" disabled>Apply Shock</button>
+          <button class="secondary" id="before-shock-btn" disabled>Before Shock</button>
+          <button class="secondary" id="after-shock-btn" disabled>After Shock</button>
+        </div>
+      </div>
       <div>
         <div class="subtext">Policy signals detected</div>
         <div class="signal-badges" id="signal-badges"></div>
@@ -283,10 +334,22 @@
     const stepsInput = document.getElementById('steps');
     const actorChartsWrap = document.getElementById('actor-charts');
     const globalModeButtons = document.querySelectorAll('#global-modes .toggle-btn');
+    const shockInput = document.getElementById('shock-text');
+    const shockBtn = document.getElementById('shock-btn');
+    const beforeShockBtn = document.getElementById('before-shock-btn');
+    const afterShockBtn = document.getElementById('after-shock-btn');
+    const shockStatus = document.getElementById('shock-status');
 
     let globalChart;
     let actorCharts = {};
     let globalSeriesCache = [];
+    let baselineGlobalSeries = [];
+    let baselineActorSeries = {};
+    let shockedGlobalSeries = [];
+    let shockedActorSeries = {};
+    let selectedActors = [];
+    let currentActorSeries = {};
+    let shockApplied = false;
     let globalMode = 'macro';
 
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
@@ -523,10 +586,87 @@
         renderSignals(mockData.policy_signals);
         renderPentagonNodes(mockData.selected_actors);
         renderActorLabels(mockData.selected_actors, mockData.actor_series);
-        buildGlobalChart(mockData.global_series);
-        buildActorCharts(mockData.actor_series);
+        baselineGlobalSeries = deepCloneSeries(mockData.global_series);
+        baselineActorSeries = deepCloneSeries(mockData.actor_series);
+        shockedGlobalSeries = [];
+        shockedActorSeries = {};
+        selectedActors = [...mockData.selected_actors];
+        shockApplied = false;
+        updateShockControls('ready');
+        showView('before');
         statusText.textContent = 'Complete';
       }, 1500);
+    }
+
+    function deepCloneSeries(series) {
+      if (Array.isArray(series)) {
+        return series.map((item) => deepCloneSeries(item));
+      }
+      if (series && typeof series === 'object') {
+        return Object.fromEntries(Object.entries(series).map(([k, v]) => [k, deepCloneSeries(v)]));
+      }
+      return series;
+    }
+
+    function applyShock() {
+      if (!baselineGlobalSeries.length) return;
+      const narrative = shockInput.value.trim() || 'Generic macro shock.';
+      const severity = 0.85 + Math.random() * 0.08;
+
+      shockedGlobalSeries = baselineGlobalSeries.map((point, idx) => {
+        const decay = 1 - (idx / Math.max(baselineGlobalSeries.length, 1)) * 0.1;
+        const adjusted = {};
+        Object.entries(point).forEach(([key, value]) => {
+          const wobble = (Math.random() - 0.5) * 1.5;
+          adjusted[key] = value * severity * decay + wobble - 1.5;
+        });
+        return adjusted;
+      });
+
+      shockedActorSeries = {};
+      Object.entries(baselineActorSeries).forEach(([actor, series]) => {
+        const drop = 0.9 + Math.random() * 0.05;
+        shockedActorSeries[actor] = series.map((value, idx) => {
+          const drag = 1 - (idx / Math.max(series.length, 1)) * 0.12;
+          return value * drop * drag - Math.random() * 2.2;
+        });
+      });
+
+      shockApplied = true;
+      shockStatus.textContent = `Mock shock applied: ${narrative}`;
+      showView('after');
+    }
+
+    function showView(mode) {
+      const useShocked = mode === 'after' && shockApplied;
+      const globalSeries = useShocked ? shockedGlobalSeries : baselineGlobalSeries;
+      const actorSeries = useShocked ? shockedActorSeries : baselineActorSeries;
+      globalSeriesCache = globalSeries;
+      currentActorSeries = actorSeries;
+      buildGlobalChart(globalSeries);
+      buildActorCharts(actorSeries);
+      renderActorLabels(selectedActors, actorSeries);
+      selectionPill.classList.toggle('accent', useShocked);
+      selectionPill.textContent = useShocked ? 'Shock impact view' : `${selectedActors.length || 0} actors selected`;
+      statusText.textContent = useShocked ? 'Showing shock impact (mock)' : 'Simulation complete';
+      updateShockControls(useShocked ? 'after' : 'before');
+    }
+
+    function updateShockControls(state) {
+      if (state === 'ready') {
+        shockInput.disabled = false;
+        shockBtn.disabled = false;
+        beforeShockBtn.disabled = false;
+        afterShockBtn.disabled = true;
+        shockStatus.textContent = 'Ready for shock prompt';
+      } else if (state === 'after') {
+        beforeShockBtn.disabled = false;
+        afterShockBtn.disabled = false;
+        shockBtn.disabled = false;
+      } else {
+        beforeShockBtn.disabled = false;
+        afterShockBtn.disabled = !shockApplied;
+      }
     }
 
     function generateMockData(steps) {
@@ -592,6 +732,10 @@
       policyInput.value = samplePolicy;
       statusText.textContent = 'Sample policy loaded';
     });
+
+    shockBtn.addEventListener('click', applyShock);
+    beforeShockBtn.addEventListener('click', () => showView('before'));
+    afterShockBtn.addEventListener('click', () => showView('after'));
 
     globalModeButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
