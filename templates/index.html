@@ -67,6 +67,17 @@
     }
     .tab-btn:hover { background: var(--bg); color: var(--fg); }
     .tab-btn.active { background: var(--fg); color: var(--surface); }
+    .ledger-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .ledger-feed { display: flex; flex-direction: column; gap: 12px; }
+    .ledger-item { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--surface); box-shadow: var(--shadow-sm); }
+    .ledger-item h3 { margin: 0 0 8px 0; font-size: 14px; font-weight: 600; }
+    .ledger-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; font-size: 12px; color: var(--muted); }
+    .hash-pill { display: inline-block; padding: 4px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; word-break: break-all; }
+    .audit-list { display: flex; flex-direction: column; gap: 8px; }
+    .audit-entry { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); font-size: 13px; line-height: 1.5; box-shadow: var(--shadow-sm); }
+    .audit-entry strong { color: var(--fg); }
+    .status-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); font-size: 12px; }
     main { flex: 1; display: flex; flex-direction: column; gap: 24px; padding: 32px; max-width: 1400px; margin: 0 auto; width: 100%; }
     .page-section { display: none; flex-direction: column; gap: 24px; }
     .page-section.active { display: flex; }
@@ -368,11 +379,12 @@
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     @media (max-width: 1100px) { .grid-main, .analysis-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 700px) { 
+    @media (max-width: 700px) {
       main { padding: 20px; }
       .metrics.new { grid-template-columns: repeat(2, 1fr); }
       .workflow-container { height: 360px; }
       .final-grid { grid-template-columns: 1fr; }
+      .ledger-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -385,6 +397,7 @@
     <div class="nav-tabs">
       <button class="tab-btn" data-target="analysis">Policy Analysis</button>
       <button class="tab-btn" data-target="simulation">Simulation</button>
+      <button class="tab-btn" data-target="ledger">Ledger</button>
       <div class="pill" id="token-pill">Max tokens: {{ max_tokens | int }}</div>
     </div>
   </header>
@@ -499,6 +512,32 @@
         </section>
       </div>
     </section>
+
+    <section class="page-section" data-section="ledger">
+      <section class="panel">
+        <h2>Blockchain Ledger & Audit Trail</h2>
+        <div class="status-row" id="ledger-status">
+          <span class="status-pill">Ledger height: —</span>
+          <span class="status-pill">Pending tx: —</span>
+          <span class="status-pill">Tip hash: —</span>
+          <span class="status-pill">Integrity: —</span>
+        </div>
+      </section>
+      <div class="ledger-grid">
+        <section class="panel">
+          <h2>Recent Blocks</h2>
+          <div class="ledger-feed" id="ledger-blocks">
+            <div class="analysis-sub">No blocks mined yet.</div>
+          </div>
+        </section>
+        <section class="panel">
+          <h2>Audit Log</h2>
+          <div class="audit-list" id="audit-log">
+            <div class="analysis-sub">Waiting for audit events...</div>
+          </div>
+        </section>
+      </div>
+    </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -542,9 +581,13 @@
     const statusText = document.getElementById('status-text');
     const stepsInput = document.getElementById('steps');
     const actorChartsWrap = document.getElementById('actor-charts');
+    const ledgerBlocks = document.getElementById('ledger-blocks');
+    const auditLog = document.getElementById('audit-log');
+    const ledgerStatus = document.getElementById('ledger-status');
 
     let globalChart;
     let actorCharts = {};
+    let ledgerInterval;
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
 
     const escapeHTML = (str) => str.replace(/[&<>"']/g, (c) => ({
@@ -643,6 +686,11 @@
       params.set('tab', target);
       const newUrl = `${window.location.pathname}?${params.toString()}`;
       window.history.replaceState({}, '', newUrl);
+      if (target === 'ledger') {
+        startLedgerStream();
+      } else {
+        stopLedgerStream();
+      }
     }
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -915,6 +963,124 @@
           },
         });
       });
+    }
+
+    function renderLedgerStatus(snapshot) {
+      if (!ledgerStatus) return;
+      const { ledgerHeight, pendingCount, tipHash, valid, errors } = snapshot;
+      ledgerStatus.innerHTML = '';
+      const items = [
+        `Ledger height: ${ledgerHeight ?? '—'}`,
+        `Pending tx: ${pendingCount ?? '—'}`,
+        `Tip hash: ${tipHash ? tipHash.slice(0, 10) + '…' : '—'}`,
+        `Integrity: ${valid === undefined ? '—' : valid ? 'valid' : 'check errors'}`
+      ];
+      items.forEach(text => {
+        const pill = document.createElement('span');
+        pill.className = 'status-pill';
+        pill.textContent = text;
+        ledgerStatus.appendChild(pill);
+      });
+      if (errors && errors.length) {
+        const errorPill = document.createElement('span');
+        errorPill.className = 'status-pill';
+        errorPill.style.borderColor = '#d62828';
+        errorPill.style.color = '#d62828';
+        errorPill.textContent = `${errors.length} integrity warning${errors.length > 1 ? 's' : ''}`;
+        ledgerStatus.appendChild(errorPill);
+      }
+    }
+
+    function renderLedgerBlocks(blocks) {
+      ledgerBlocks.innerHTML = '';
+      if (!blocks || !blocks.length) {
+        const msg = document.createElement('div');
+        msg.className = 'analysis-sub';
+        msg.textContent = 'No blocks mined yet.';
+        ledgerBlocks.appendChild(msg);
+        return;
+      }
+      blocks.slice().reverse().forEach(block => {
+        const card = document.createElement('div');
+        card.className = 'ledger-item';
+        const time = block.timestamp ? new Date(block.timestamp).toLocaleString() : '—';
+        const txCount = block.transactions?.length ?? 0;
+        card.innerHTML = `
+          <h3>Block #${block.index}</h3>
+          <div class="ledger-meta">
+            <span>Time: ${time}</span>
+            <span>Tx count: ${txCount}</span>
+            <span>Previous: ${block.previous_hash ? block.previous_hash.slice(0, 10) + '…' : '—'}</span>
+          </div>
+          <div style="margin-top: 8px;">
+            <div class="hash-pill">${block.hash || '—'}</div>
+            <div class="analysis-sub" style="margin-top: 6px;">Merkle root: ${block.merkle_root || '—'}</div>
+          </div>
+        `;
+        ledgerBlocks.appendChild(card);
+      });
+    }
+
+    function renderAuditLog(entries) {
+      auditLog.innerHTML = '';
+      if (!entries || !entries.length) {
+        const msg = document.createElement('div');
+        msg.className = 'analysis-sub';
+        msg.textContent = 'Waiting for audit events...';
+        auditLog.appendChild(msg);
+        return;
+      }
+      entries.slice().reverse().forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'audit-entry';
+        const ts = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '—';
+        const label = entry.action || 'event';
+        const blockIdx = entry.block_index ? `Block #${entry.block_index}` : 'Pending buffer';
+        const hash = entry.hash ? `<div class="hash-pill" style="margin-top:6px;">${entry.hash}</div>` : '';
+        row.innerHTML = `
+          <div><strong>${label}</strong> • ${blockIdx}</div>
+          <div class="analysis-sub">${ts} · Tx count: ${entry.tx_count ?? '—'}</div>
+          ${hash}
+        `;
+        auditLog.appendChild(row);
+      });
+    }
+
+    async function loadLedgerSnapshot() {
+      try {
+        const [ledgerRes, auditRes, pendingRes, verifyRes] = await Promise.all([
+          fetchJSON('/api/blockchain/ledger?limit=12'),
+          fetchJSON('/api/blockchain/audit?limit=25'),
+          fetchJSON('/api/blockchain/pending'),
+          fetchJSON('/api/blockchain/verify')
+        ]);
+
+        const ledgerList = ledgerRes.ledger || [];
+        const pendingCount = pendingRes.pending?.length ?? 0;
+        renderLedgerBlocks(ledgerList);
+        renderAuditLog(auditRes.audit || []);
+        renderLedgerStatus({
+          ledgerHeight: ledgerList.length,
+          pendingCount,
+          tipHash: ledgerList[ledgerList.length - 1]?.hash,
+          valid: verifyRes.valid,
+          errors: verifyRes.errors
+        });
+      } catch (err) {
+        ledgerStatus.innerHTML = `<span class="status-pill">${escapeHTML(err.message)}</span>`;
+      }
+    }
+
+    function startLedgerStream() {
+      if (ledgerInterval) return;
+      loadLedgerSnapshot();
+      ledgerInterval = setInterval(loadLedgerSnapshot, 5000);
+    }
+
+    function stopLedgerStream() {
+      if (!ledgerInterval) return;
+      clearInterval(ledgerInterval);
+      ledgerInterval = null;
     }
 
     async function runSimulation() {
