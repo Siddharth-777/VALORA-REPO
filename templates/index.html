@@ -247,6 +247,13 @@
     .analysis-title { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.3px; }
     .analysis-sub { font-size: 13px; color: var(--muted); font-weight: 400; }
     .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .wide-panel { grid-column: 1 / -1; }
+    .debate-thread { display: flex; flex-direction: column; gap: 12px; }
+    .debate-exchange { display: grid; grid-template-columns: 1fr 7fr; gap: 10px; align-items: start; }
+    .debate-speaker { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: 0.2px; text-transform: uppercase; }
+    .debate-bubble { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface); box-shadow: var(--shadow-sm); }
+    .debate-bubble strong { color: var(--fg); }
+    .debate-bubble .tag { display: inline-block; padding: 4px 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; margin-right: 8px; }
     .analysis-panel { 
       border: 1px solid var(--border);
       background: var(--surface);
@@ -446,6 +453,24 @@
         <div class="analysis-grid">
           <div class="analysis-panel">
             <div>
+              <h2>Agent Workflow</h2>
+              <p class="analysis-sub">Click nodes to view agent output</p>
+            </div>
+            <div class="workflow-container" id="workflow">
+              <svg id="workflow-svg"></svg>
+            </div>
+          </div>
+
+          <div class="analysis-panel">
+            <div>
+              <h2>Policy Debate Thread</h2>
+              <p class="analysis-sub">Policy Supporter vs Policy Opposer (live exchanges)</p>
+            </div>
+            <div class="debate-thread" id="debate-thread"></div>
+          </div>
+
+          <div class="analysis-panel wide-panel">
+            <div>
               <h2>Policy Input <span class="analysis-sub" id="cycle-pill">Cycle: —</span></h2>
               <p class="analysis-sub">Enter policy description for analysis</p>
             </div>
@@ -460,16 +485,6 @@
                 <span class="analysis-sub">Economic Indicators</span>
               </div>
               <div class="metrics new" id="macro-grid"></div>
-            </div>
-          </div>
-
-          <div class="analysis-panel">
-            <div>
-              <h2>Agent Workflow</h2>
-              <p class="analysis-sub">Click nodes to view agent output</p>
-            </div>
-            <div class="workflow-container" id="workflow">
-              <svg id="workflow-svg"></svg>
             </div>
           </div>
         </div>
@@ -613,6 +628,7 @@
     const ledgerBlocks = document.getElementById('ledger-blocks');
     const auditLog = document.getElementById('audit-log');
     const ledgerStatus = document.getElementById('ledger-status');
+    const debateThread = document.getElementById('debate-thread');
 
     let globalChart;
     let actorCharts = {};
@@ -633,6 +649,15 @@
       '"': '&quot;',
       "'": '&#39;'
     }[c]));
+
+    const sampleDebate = [
+      { speaker: 'Policy Supporter', stance: 'Supporter', message: 'The package boosts household demand through transfers while easing credit keeps payrolls intact for small firms.' },
+      { speaker: 'Policy Opposer', stance: 'Opposer', message: 'Transfers risk stoking inflation, and easy credit could misprice risk when banks are already cautious.' },
+      { speaker: 'Policy Supporter', stance: 'Supporter', message: 'Pairing it with tighter utility emissions nudges investment toward cleaner generation without waiting for cap-and-trade.' },
+      { speaker: 'Policy Opposer', stance: 'Opposer', message: 'Utilities may pass those compliance costs to ratepayers, undermining the relief from transfer payments.' },
+      { speaker: 'Policy Supporter', stance: 'Supporter', message: 'Targeted rebates for low-income customers and green grants soften that pass-through while sustaining grid upgrades.' },
+      { speaker: 'Policy Opposer', stance: 'Opposer', message: 'We still need clarity on financing—who absorbs the credit risk expansion and how it impacts fiscal space long term?' }
+    ];
 
     function formatInline(text) {
       return escapeHTML(text)
@@ -1039,6 +1064,28 @@
       }
     }
 
+    function renderDebate(exchanges) {
+      if (!debateThread) return;
+      debateThread.innerHTML = '';
+      const items = exchanges && exchanges.length ? exchanges : sampleDebate;
+      items.forEach(({ speaker, stance, message }) => {
+        const row = document.createElement('div');
+        row.className = 'debate-exchange';
+
+        const label = document.createElement('div');
+        label.className = 'debate-speaker';
+        label.textContent = speaker;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'debate-bubble';
+        bubble.innerHTML = `<span class="tag">${escapeHTML(stance)}</span>${formatInline(escapeHTML(message || 'No message'))}`;
+
+        row.appendChild(label);
+        row.appendChild(bubble);
+        debateThread.appendChild(row);
+      });
+    }
+
     function renderLedgerBlocks(blocks) {
       ledgerBlocks.innerHTML = '';
       if (!blocks || !blocks.length) {
@@ -1179,6 +1226,7 @@
     renderSignals({});
     renderPentagonNodes([]);
     renderTopActors(defaultImpact);
+    renderDebate(sampleDebate);
     loadIndicators();
     drawConnections();
     createNodes();
