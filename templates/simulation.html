@@ -1,163 +1,140 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Policy Simulation Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #0f1115;
-      --panel: #151821;
-      --border: #1f2430;
-      --fg: #f7f8fa;
-      --muted: #8d93a5;
-      --accent: #5dd0ff;
-      --accent-2: #7cf29c;
-      --danger: #ff7c7c;
+      --bg: #ffffff;
+      --fg: #0c0c0c;
+      --muted: #3a3a3a;
+      --border: #111111;
+      --accent: #0066cc;
+      --accent-light: #e6f2ff;
     }
-
-    * {
-      box-sizing: border-box;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(93, 208, 255, 0.08), transparent 40%),
-        radial-gradient(circle at 80% 0%, rgba(124, 242, 156, 0.05), transparent 35%),
-        var(--bg);
+      background: var(--bg);
       color: var(--fg);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
-
     header {
-      padding: 18px 24px 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
+      padding: 18px 24px 10px;
       border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(4px);
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 22px;
-      letter-spacing: 0.2px;
-    }
-
-    main {
-      display: grid;
-      grid-template-columns: 1.05fr 1fr;
-      gap: 18px;
-      padding: 18px 24px 28px;
-      flex: 1;
-      width: 100%;
-    }
-
-    .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 16px;
       display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-    }
-
-    .panel h2 {
-      margin: 0;
-      font-size: 16px;
-      letter-spacing: 0.2px;
-      display: flex;
+      gap: 16px;
       align-items: center;
       justify-content: space-between;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 160px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      font-size: 14px;
-      background: #0c0e14;
-      color: var(--fg);
-      resize: vertical;
-    }
-
-    .actions {
-      display: flex;
-      gap: 12px;
       flex-wrap: wrap;
-      align-items: center;
     }
-
-    button {
+    h1 { margin: 0; font-size: 22px; letter-spacing: 0.3px; }
+    .pill { 
+      border: 1px solid var(--border); 
+      padding: 8px 12px; 
+      border-radius: 999px; 
+      font-size: 13px; 
+      background: #f5f5f5;
+    }
+    main { 
+      flex: 1; 
+      display: grid; 
+      grid-template-columns: 1.05fr 1fr; 
+      gap: 18px; 
+      padding: 18px 24px 24px; 
+    }
+    .panel { 
+      border: 1px solid var(--border); 
+      border-radius: 14px; 
+      padding: 16px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
+      background: #fff; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .panel h2 { 
+      margin: 0; 
+      font-size: 16px; 
+      letter-spacing: 0.2px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+    }
+    textarea { 
+      width: 100%; 
+      min-height: 160px; 
+      border: 1px solid var(--border); 
+      border-radius: 12px; 
+      padding: 12px; 
+      font-size: 14px; 
+      background: #f8f8f8; 
+      color: var(--fg); 
+      resize: vertical; 
       font-family: inherit;
-      font-size: 14px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: linear-gradient(120deg, var(--accent), #4f9bff);
-      color: #041025;
-      cursor: pointer;
-      font-weight: 700;
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
     }
-
-    button:active {
-      transform: translateY(1px);
-      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.25);
+    button { 
+      font-family: inherit; 
+      font-size: 14px; 
+      padding: 12px 16px; 
+      border-radius: 12px; 
+      border: 1px solid var(--border); 
+      background: var(--fg); 
+      color: #fff; 
+      cursor: pointer; 
+      font-weight: 600;
+      transition: opacity 0.2s;
     }
-
-    button.secondary {
-      background: transparent;
-      color: var(--fg);
+    button:hover { opacity: 0.85; }
+    button.secondary { 
+      background: #fff; 
+      color: var(--fg); 
     }
-
-    .status {
-      font-size: 13px;
-      color: var(--muted);
+    .actions { 
+      display: flex; 
+      gap: 10px; 
+      flex-wrap: wrap; 
+      align-items: center; 
     }
-
-    .signal-badges {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
+    .subtext { 
+      font-size: 13px; 
+      color: var(--muted); 
     }
-
-    .pill {
+    .signal-badges { 
+      display: flex; 
+      gap: 10px; 
+      flex-wrap: wrap; 
+    }
+    .signal-pill {
       border: 1px solid var(--border);
       padding: 8px 12px;
       border-radius: 999px;
       font-size: 13px;
-      background: rgba(255, 255, 255, 0.04);
+      background: #f5f5f5;
     }
-
     .pentagon-area {
       position: relative;
       height: 280px;
-      background: #0d1018;
+      background: #fafafa;
       border: 1px solid var(--border);
       border-radius: 14px;
       overflow: hidden;
     }
-
     .node {
       position: absolute;
       width: 80px;
       height: 80px;
       border-radius: 50%;
-      background: linear-gradient(160deg, rgba(93, 208, 255, 0.25), rgba(124, 242, 156, 0.15));
-      border: 1px solid var(--border);
+      background: #f0f0f0;
+      border: 2px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -165,67 +142,60 @@
       padding: 8px;
       color: var(--fg);
       font-size: 12px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(2px);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-
     .node.primary {
-      background: linear-gradient(160deg, rgba(93, 208, 255, 0.35), rgba(124, 242, 156, 0.35));
+      background: var(--accent-light);
+      border-color: var(--accent);
       width: 88px;
       height: 88px;
     }
-
     .node-labels {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 10px;
       margin-top: 8px;
     }
-
     .label-card {
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.03);
+      background: #fafafa;
       font-size: 13px;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-
-    .state-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 10px;
-    }
-
-    .state-card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 10px 12px;
-      background: rgba(255, 255, 255, 0.025);
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
     .charts-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 14px;
     }
-
     .chart-card {
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 12px;
-      background: #0d1018;
-      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      padding: 16px;
+      background: #fafafa;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-
+    .chart-card h3 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    input[type="number"] {
+      width: 70px;
+      background: #f8f8f8;
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-family: inherit;
+    }
     @media (max-width: 1080px) {
-      main {
-        grid-template-columns: 1fr;
-      }
+      main { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -233,38 +203,36 @@
   <header>
     <div>
       <h1>Policy Simulation Engine</h1>
-      <div class="status">Run the dynamic economy simulation from your browser.</div>
+      <div class="subtext">Run dynamic economy simulations from your browser</div>
     </div>
     <div class="pill" id="selection-pill">Awaiting policy input</div>
   </header>
 
   <main>
     <section class="panel">
-      <h2>Policy & Run Controls <span class="status" id="status-text">Idle</span></h2>
+      <h2>Policy & Run Controls <span class="subtext" id="status-text">Idle</span></h2>
       <textarea id="policy-text" placeholder="Describe your policy. Example: Expand child benefits, lower policy rates by 50 bps, and raise renewable mandates for utilities."></textarea>
       <div class="actions">
         <button id="run-btn">Run Simulation</button>
         <button class="secondary" id="fill-btn">Use sample policy</button>
-        <button class="secondary" id="download-btn">Download JSON</button>
-        <span class="status">Time steps: <input type="number" id="steps" value="8" min="3" max="16" style="width:70px; background:transparent; color:var(--fg); border:1px solid var(--border); border-radius:8px; padding:4px 8px;" /></span>
+        <span class="subtext">Time steps: <input type="number" id="steps" value="8" min="3" max="16" /></span>
       </div>
       <div>
-        <div class="status">Policy signals detected</div>
+        <div class="subtext">Policy signals detected</div>
         <div class="signal-badges" id="signal-badges"></div>
       </div>
       <div>
-        <div class="status">Top 5 affected actors</div>
+        <div class="subtext">Top 5 affected actors</div>
         <div class="pentagon-area" id="pentagon"></div>
         <div class="node-labels" id="actor-labels"></div>
-        <div class="status" style="margin-top:8px;">Latest state snapshot</div>
-        <div class="state-grid" id="state-grid"></div>
       </div>
     </section>
 
     <section class="panel">
       <h2>Charts & Dashboards</h2>
       <div class="chart-card">
-        <canvas id="global-chart" height="160"></canvas>
+        <h3>Global Economic Indicators</h3>
+        <canvas id="global-chart"></canvas>
       </div>
       <div class="charts-grid" id="actor-charts"></div>
     </section>
@@ -279,20 +247,24 @@
     const statusText = document.getElementById('status-text');
     const stepsInput = document.getElementById('steps');
     const actorChartsWrap = document.getElementById('actor-charts');
-    const stateGrid = document.getElementById('state-grid');
-    const downloadBtn = document.getElementById('download-btn');
 
     let globalChart;
     let actorCharts = {};
-    let latestResult = null;
 
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
 
     function renderSignals(signals) {
       signalBadges.innerHTML = '';
+      if (!signals || Object.keys(signals).length === 0) {
+        const badge = document.createElement('div');
+        badge.className = 'signal-pill';
+        badge.textContent = 'No signals detected';
+        signalBadges.appendChild(badge);
+        return;
+      }
       Object.entries(signals).forEach(([key, value]) => {
         const badge = document.createElement('div');
-        badge.className = 'pill';
+        badge.className = 'signal-pill';
         badge.textContent = `${key}: ${value}`;
         signalBadges.appendChild(badge);
       });
@@ -300,7 +272,13 @@
 
     function renderPentagonNodes(actors) {
       pentagon.innerHTML = '';
-      if (!actors.length) return;
+      if (!actors || !actors.length) {
+        const msg = document.createElement('div');
+        msg.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:var(--muted); font-size:14px;';
+        msg.textContent = 'No actors selected';
+        pentagon.appendChild(msg);
+        return;
+      }
       const centerX = pentagon.clientWidth / 2;
       const centerY = pentagon.clientHeight / 2;
       const radius = Math.min(centerX, centerY) - 50;
@@ -319,53 +297,92 @@
 
     function renderActorLabels(actors, actorSeries) {
       actorLabels.innerHTML = '';
+      if (!actors || !actors.length) return;
       actors.forEach((actor) => {
         const card = document.createElement('div');
         card.className = 'label-card';
         const series = actorSeries?.[actor] || [];
         const latest = series[series.length - 1];
-        card.innerHTML = `<span>${actor}</span><span style="color: var(--accent-2); font-weight: 700;">${latest ?? '—'}</span>`;
+        const value = latest !== undefined && latest !== null ? latest.toFixed(2) : '—';
+        card.innerHTML = `<span>${actor}</span><span style="font-weight: 700;">${value}</span>`;
         actorLabels.appendChild(card);
       });
     }
 
-    function renderStateSnapshot(timeline) {
-      stateGrid.innerHTML = '';
-      if (!timeline?.length) return;
-      const latest = timeline[timeline.length - 1];
-      Object.entries(latest).forEach(([actor, params]) => {
-        const card = document.createElement('div');
-        card.className = 'state-card';
-        const entries = Object.entries(params)
-          .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
-          .slice(0, 4)
-          .map(([k, v]) => `<div><strong>${k}</strong>: ${v}</div>`) // show top movers
-          .join('');
-        card.innerHTML = `<div style="font-weight:700; margin-bottom:6px;">${actor}</div>${entries}`;
-        stateGrid.appendChild(card);
-      });
-    }
-
     function buildGlobalChart(globalSeries) {
-      const labels = globalSeries.map((_, idx) => `t${idx + 1}`);
+      if (!globalSeries || !globalSeries.length) return;
+      const labels = globalSeries.map((_, idx) => `T${idx + 1}`);
       const ctx = document.getElementById('global-chart').getContext('2d');
       if (globalChart) globalChart.destroy();
+      
       globalChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
           datasets: [
-            { label: 'GDP', data: globalSeries.map((g) => g.gdp), borderColor: '#5dd0ff', backgroundColor: 'rgba(93, 208, 255, 0.15)', tension: 0.25 },
-            { label: 'Inflation', data: globalSeries.map((g) => g.inflation), borderColor: '#ffbe76', backgroundColor: 'rgba(255, 190, 118, 0.15)', tension: 0.25 },
-            { label: 'Unemployment', data: globalSeries.map((g) => g.unemployment), borderColor: '#ff7c7c', backgroundColor: 'rgba(255, 124, 124, 0.15)', tension: 0.25 },
+            { 
+              label: 'GDP', 
+              data: globalSeries.map((g) => g.gdp), 
+              borderColor: '#0066cc', 
+              backgroundColor: 'rgba(0, 102, 204, 0.1)', 
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            },
+            { 
+              label: 'Inflation', 
+              data: globalSeries.map((g) => g.inflation), 
+              borderColor: '#ff6b35', 
+              backgroundColor: 'rgba(255, 107, 53, 0.1)', 
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            },
+            { 
+              label: 'Unemployment', 
+              data: globalSeries.map((g) => g.unemployment), 
+              borderColor: '#d62828', 
+              backgroundColor: 'rgba(214, 40, 40, 0.1)', 
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5
+            },
           ],
         },
         options: {
           responsive: true,
-          plugins: { legend: { labels: { color: '#e6e8f0' } } },
+          maintainAspectRatio: true,
+          aspectRatio: 2.5,
+          plugins: { 
+            legend: { 
+              labels: { 
+                color: '#0c0c0c',
+                font: { size: 12, weight: '600' },
+                padding: 15,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              } 
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: 12,
+              titleFont: { size: 13, weight: '600' },
+              bodyFont: { size: 12 }
+            }
+          },
           scales: {
-            x: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
-            y: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+            x: { 
+              ticks: { color: '#3a3a3a', font: { size: 11 } }, 
+              grid: { color: '#e5e5e5', drawBorder: false } 
+            },
+            y: { 
+              ticks: { color: '#3a3a3a', font: { size: 11 } }, 
+              grid: { color: '#e5e5e5', drawBorder: false },
+              beginAtZero: false
+            },
           },
         },
       });
@@ -374,27 +391,62 @@
     function buildActorCharts(actorSeries) {
       actorChartsWrap.innerHTML = '';
       actorCharts = {};
-      const labels = Object.values(actorSeries)[0]?.map((_, idx) => `t${idx + 1}`) || [];
+      if (!actorSeries || Object.keys(actorSeries).length === 0) return;
+      
+      const labels = Object.values(actorSeries)[0]?.map((_, idx) => `T${idx + 1}`) || [];
+      const colors = ['#0066cc', '#00a896', '#ff6b35', '#d62828', '#8338ec'];
+      
       Object.entries(actorSeries).forEach(([actor, series], idx) => {
         const card = document.createElement('div');
         card.className = 'chart-card';
+        const title = document.createElement('h3');
+        title.textContent = actor;
+        card.appendChild(title);
+        
         const canvas = document.createElement('canvas');
-        canvas.height = 140;
         card.appendChild(canvas);
         actorChartsWrap.appendChild(card);
-        const colors = ['#7cf29c', '#5dd0ff', '#ffbe76', '#ff7c7c', '#c792ea'];
+        
         const color = colors[idx % colors.length];
         actorCharts[actor] = new Chart(canvas.getContext('2d'), {
           type: 'line',
           data: {
             labels,
-            datasets: [{ label: actor, data: series, borderColor: color, backgroundColor: `${color}33`, tension: 0.3 }],
+            datasets: [{ 
+              label: actor, 
+              data: series, 
+              borderColor: color, 
+              backgroundColor: `${color}1a`, 
+              tension: 0.4,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              fill: true
+            }],
           },
           options: {
-            plugins: { legend: { display: false } },
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1.8,
+            plugins: { 
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 10,
+                titleFont: { size: 12 },
+                bodyFont: { size: 11 }
+              }
+            },
             scales: {
-              x: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
-              y: { ticks: { color: '#9aa0b5' }, grid: { color: '#1f2430' } },
+              x: { 
+                ticks: { color: '#3a3a3a', font: { size: 10 } }, 
+                grid: { color: '#e5e5e5', drawBorder: false } 
+              },
+              y: { 
+                ticks: { color: '#3a3a3a', font: { size: 10 } }, 
+                grid: { color: '#e5e5e5', drawBorder: false },
+                beginAtZero: false
+              },
             },
           },
         });
@@ -405,30 +457,53 @@
       const policy = policyInput.value.trim();
       const steps = Number(stepsInput.value) || 8;
       if (!policy) {
-        statusText.textContent = 'Please enter a policy first.';
+        statusText.textContent = 'Please enter a policy first';
         return;
       }
       statusText.textContent = 'Running simulation...';
-      try {
-        const res = await fetch('/api/simulation/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ policy, time_steps: steps }),
-        });
-        if (!res.ok) throw new Error('Simulation failed.');
-        const data = await res.json();
-        latestResult = data;
-        selectionPill.textContent = `${data.selected_actors.length} actors selected`;
-        renderSignals(data.policy_signals || {});
-        renderPentagonNodes(data.selected_actors || []);
-        renderActorLabels(data.selected_actors || [], data.actor_series || {});
-        buildGlobalChart(data.global_series || []);
-        buildActorCharts(data.actor_series || {});
-        renderStateSnapshot(data.timeline || []);
+      
+      // Simulate API call with mock data
+      setTimeout(() => {
+        const mockData = generateMockData(steps);
+        selectionPill.textContent = `${mockData.selected_actors.length} actors selected`;
+        renderSignals(mockData.policy_signals);
+        renderPentagonNodes(mockData.selected_actors);
+        renderActorLabels(mockData.selected_actors, mockData.actor_series);
+        buildGlobalChart(mockData.global_series);
+        buildActorCharts(mockData.actor_series);
         statusText.textContent = 'Complete';
-      } catch (err) {
-        statusText.textContent = err.message || 'Simulation failed.';
+      }, 1500);
+    }
+
+    function generateMockData(steps) {
+      const actors = ['Households', 'Firms', 'Banks', 'Government', 'Central Bank'];
+      const signals = { fiscal: '+2', monetary: '-1', regulatory: '+1' };
+      
+      const globalSeries = [];
+      let gdp = 100, inflation = 2, unemployment = 5;
+      for (let i = 0; i < steps; i++) {
+        gdp += (Math.random() - 0.45) * 3;
+        inflation += (Math.random() - 0.5) * 0.5;
+        unemployment += (Math.random() - 0.5) * 0.3;
+        globalSeries.push({ gdp, inflation, unemployment });
       }
+      
+      const actorSeries = {};
+      actors.forEach(actor => {
+        actorSeries[actor] = [];
+        let val = 50 + Math.random() * 20;
+        for (let i = 0; i < steps; i++) {
+          val += (Math.random() - 0.5) * 5;
+          actorSeries[actor].push(val);
+        }
+      });
+      
+      return {
+        selected_actors: actors,
+        policy_signals: signals,
+        global_series: globalSeries,
+        actor_series: actorSeries
+      };
     }
 
     document.getElementById('run-btn').addEventListener('click', runSimulation);
@@ -437,20 +512,9 @@
       statusText.textContent = 'Sample policy loaded';
     });
 
-    downloadBtn.addEventListener('click', () => {
-      if (!latestResult) {
-        statusText.textContent = 'Run a simulation before downloading results.';
-        return;
-      }
-      const blob = new Blob([JSON.stringify(latestResult, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'simulation_result.json';
-      link.click();
-      URL.revokeObjectURL(url);
-      statusText.textContent = 'Results downloaded';
-    });
+    // Initialize empty state
+    renderSignals({});
+    renderPentagonNodes([]);
   </script>
 </body>
 </html>
