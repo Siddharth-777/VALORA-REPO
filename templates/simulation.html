@@ -301,6 +301,21 @@
         <div class="microcopy">Write a fictional shock (crisis, disaster, etc.). After the simulation, applying it flips the charts to show a negative impact.</div>
         <textarea id="shock-text" placeholder="Ex: Global energy crisis triggers credit crunch and demand shock." disabled></textarea>
       </div>
+      <div class="shock-card">
+        <div class="actions" style="justify-content: space-between; align-items: flex-start;">
+          <div>
+            <div class="subtext">Shock scenario (mock)</div>
+            <div class="microcopy">Applies a fictional negative impact after the simulation completes.</div>
+          </div>
+          <div class="shock-badge" id="shock-status">Awaiting simulation</div>
+        </div>
+        <textarea id="shock-text" placeholder="Ex: Global energy crisis triggers credit crunch and demand shock." disabled></textarea>
+        <div class="shock-controls">
+          <button id="shock-btn" disabled>Apply Shock</button>
+          <button class="secondary" id="before-shock-btn" disabled>Before Shock</button>
+          <button class="secondary" id="after-shock-btn" disabled>After Shock</button>
+        </div>
+      </div>
       <div>
         <div class="subtext">Policy signals detected</div>
         <div class="signal-badges" id="signal-badges"></div>
