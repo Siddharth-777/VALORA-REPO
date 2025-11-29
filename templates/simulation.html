@@ -192,6 +192,29 @@
       font-weight: 600;
       color: var(--muted);
     }
+    .chart-toggles {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 6px 0 10px;
+    }
+    .toggle-btn {
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .toggle-btn.active {
+      background: var(--accent-light);
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 1px 6px rgba(0, 102, 204, 0.15);
+    }
     input[type="number"] {
       width: 70px;
       background: #f8f8f8;
@@ -222,7 +245,7 @@
       <div class="actions">
         <button id="run-btn">Run Simulation</button>
         <button class="secondary" id="fill-btn">Use sample policy</button>
-        <span class="subtext">Time steps: <input type="number" id="steps" value="8" min="3" max="16" /></span>
+        <span class="subtext">Time steps: <input type="number" id="steps" value="14" min="3" max="24" /></span>
       </div>
       <div>
         <div class="subtext">Policy signals detected</div>
@@ -239,6 +262,11 @@
       <h2>Charts & Dashboards</h2>
       <div class="chart-card">
         <h3>Global Economic Indicators</h3>
+        <div class="chart-toggles" id="global-modes">
+          <button class="toggle-btn active" data-mode="macro">Growth & Prices</button>
+          <button class="toggle-btn" data-mode="policy">Policy & Credit</button>
+          <button class="toggle-btn" data-mode="labor">Labor & Sentiment</button>
+        </div>
         <canvas id="global-chart"></canvas>
       </div>
       <div class="charts-grid" id="actor-charts"></div>
@@ -254,9 +282,12 @@
     const statusText = document.getElementById('status-text');
     const stepsInput = document.getElementById('steps');
     const actorChartsWrap = document.getElementById('actor-charts');
+    const globalModeButtons = document.querySelectorAll('#global-modes .toggle-btn');
 
     let globalChart;
     let actorCharts = {};
+    let globalSeriesCache = [];
+    let globalMode = 'macro';
 
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
 
@@ -318,66 +349,69 @@
 
     function buildGlobalChart(globalSeries) {
       if (!globalSeries || !globalSeries.length) return;
+      globalSeriesCache = globalSeries;
       const labels = globalSeries.map((_, idx) => `T${idx + 1}`);
       const globalCanvas = document.getElementById('global-chart');
       globalCanvas.height = 260;
       const ctx = globalCanvas.getContext('2d');
       if (globalChart) globalChart.destroy();
-      
+
+      const datasetThemes = {
+        macro: [
+          { key: 'gdp', label: 'GDP', color: '#0066cc' },
+          { key: 'inflation', label: 'Inflation', color: '#ff6b35' },
+          { key: 'unemployment', label: 'Unemployment', color: '#d62828' },
+          { key: 'consumption', label: 'Consumption', color: '#00a896' }
+        ],
+        policy: [
+          { key: 'policy_rate', label: 'Policy Rate', color: '#6c2bd9' },
+          { key: 'credit_growth', label: 'Credit Growth', color: '#118ab2' },
+          { key: 'credit_spread', label: 'Credit Spread', color: '#ef476f' },
+          { key: 'trade_balance', label: 'Trade Balance', color: '#073b4c' }
+        ],
+        labor: [
+          { key: 'employment', label: 'Employment', color: '#2a9d8f' },
+          { key: 'wage_growth', label: 'Wage Growth', color: '#f4a261' },
+          { key: 'consumer_sentiment', label: 'Consumer Sentiment', color: '#3a86ff' },
+          { key: 'productivity', label: 'Productivity', color: '#8338ec' }
+        ]
+      };
+
+      const datasets = (datasetThemes[globalMode] || datasetThemes.macro).map(({ key, label, color }) => ({
+        label,
+        data: globalSeries.map((g) => g[key]),
+        borderColor: color,
+        backgroundColor: `${color}1a`,
+        tension: 0.35,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        fill: true
+      }));
+
       globalChart = new Chart(ctx, {
         type: 'line',
         data: {
           labels,
-          datasets: [
-            { 
-              label: 'GDP', 
-              data: globalSeries.map((g) => g.gdp), 
-              borderColor: '#0066cc', 
-              backgroundColor: 'rgba(0, 102, 204, 0.1)', 
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
-            { 
-              label: 'Inflation', 
-              data: globalSeries.map((g) => g.inflation), 
-              borderColor: '#ff6b35', 
-              backgroundColor: 'rgba(255, 107, 53, 0.1)', 
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
-            { 
-              label: 'Unemployment', 
-              data: globalSeries.map((g) => g.unemployment), 
-              borderColor: '#d62828', 
-              backgroundColor: 'rgba(214, 40, 40, 0.1)', 
-              tension: 0.4,
-              borderWidth: 2,
-              pointRadius: 3,
-              pointHoverRadius: 5
-            },
-          ],
+          datasets,
         },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 2.1,
-            interaction: {
-              mode: 'index',
-              intersect: false,
-            },
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#0c0c0c',
-                  font: { size: 12, weight: '600' },
-                padding: 15,
-                usePointStyle: true,
-                pointStyle: 'circle'
-              }
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          aspectRatio: 2.1,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#0c0c0c',
+                font: { size: 12, weight: '600' },
+              },
+              padding: 15,
+              usePointStyle: true,
+              pointStyle: 'circle'
             },
             tooltip: {
               backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -412,7 +446,7 @@
       actorChartsWrap.innerHTML = '';
       actorCharts = {};
       if (!actorSeries || Object.keys(actorSeries).length === 0) return;
-      
+
       const labels = Object.values(actorSeries)[0]?.map((_, idx) => `T${idx + 1}`) || [];
       const colors = ['#0066cc', '#00a896', '#ff6b35', '#d62828', '#8338ec'];
       
@@ -475,7 +509,7 @@
 
     async function runSimulation() {
       const policy = policyInput.value.trim();
-      const steps = Number(stepsInput.value) || 8;
+      const steps = Number(stepsInput.value) || 14;
       if (!policy) {
         statusText.textContent = 'Please enter a policy first';
         return;
@@ -498,14 +532,41 @@
     function generateMockData(steps) {
       const actors = ['Households', 'Firms', 'Banks', 'Government', 'Central Bank'];
       const signals = { fiscal: '+2', monetary: '-1', regulatory: '+1' };
-      
+
       const globalSeries = [];
-      let gdp = 100, inflation = 2, unemployment = 5;
+      let gdp = 100, inflation = 2.3, unemployment = 5.1, consumption = 70;
+      let policy_rate = 4.5, credit_growth = 3.5, credit_spread = 1.1, trade_balance = -1.5;
+      let employment = 94.5, wage_growth = 2.6, consumer_sentiment = 55, productivity = 101;
       for (let i = 0; i < steps; i++) {
-        gdp += (Math.random() - 0.45) * 3;
-        inflation += (Math.random() - 0.5) * 0.5;
-        unemployment += (Math.random() - 0.5) * 0.3;
-        globalSeries.push({ gdp, inflation, unemployment });
+        gdp += (Math.random() - 0.45) * 3.3;
+        inflation += (Math.random() - 0.5) * 0.4;
+        unemployment += (Math.random() - 0.55) * 0.35;
+        consumption += (Math.random() - 0.45) * 2.4;
+
+        policy_rate += (Math.random() - 0.55) * 0.25;
+        credit_growth += (Math.random() - 0.4) * 0.6;
+        credit_spread += (Math.random() - 0.4) * 0.18;
+        trade_balance += (Math.random() - 0.5) * 0.5;
+
+        employment += (Math.random() - 0.45) * 0.4;
+        wage_growth += (Math.random() - 0.5) * 0.25;
+        consumer_sentiment += (Math.random() - 0.45) * 1.8;
+        productivity += (Math.random() - 0.45) * 0.7;
+
+        globalSeries.push({
+          gdp,
+          inflation,
+          unemployment,
+          consumption,
+          policy_rate,
+          credit_growth,
+          credit_spread,
+          trade_balance,
+          employment,
+          wage_growth,
+          consumer_sentiment,
+          productivity
+        });
       }
       
       const actorSeries = {};
@@ -530,6 +591,16 @@
     document.getElementById('fill-btn').addEventListener('click', () => {
       policyInput.value = samplePolicy;
       statusText.textContent = 'Sample policy loaded';
+    });
+
+    globalModeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        globalMode = btn.dataset.mode;
+        globalModeButtons.forEach((b) => b.classList.toggle('active', b === btn));
+        if (globalSeriesCache.length) {
+          buildGlobalChart(globalSeriesCache);
+        }
+      });
     });
 
     // Initialize empty state
