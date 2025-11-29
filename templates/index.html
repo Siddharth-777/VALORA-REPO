@@ -179,36 +179,38 @@
       color: var(--muted);
       font-weight: 500;
     }
-    .pentagon-area { 
+    .pentagon-area {
       position: relative;
-      height: 280px;
+      height: 380px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
     }
-    .node { 
+    .node {
       position: absolute;
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
+      width: 88px;
+      height: 92px;
+      border-radius: 12px;
       background: var(--surface);
-      border: 2px solid var(--border);
+      border: 1px solid var(--border);
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 8px;
+      padding: 10px;
       color: var(--fg);
       font-size: 11px;
-      font-weight: 500;
+      font-weight: 600;
       box-shadow: var(--shadow-sm);
+      gap: 8px;
       transition: all 0.2s;
     }
     .node:hover { box-shadow: var(--shadow-md); transform: scale(1.05); }
-    .node.primary { background: var(--accent-soft); border-color: var(--accent); width: 80px; height: 80px; color: var(--accent); font-weight: 600; }
+    .node.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
     .node-labels { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; }
-    .label-card { 
+    .label-card {
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 12px;
@@ -218,6 +220,44 @@
       justify-content: space-between;
       align-items: center;
     }
+    .actor-card-header { display: flex; align-items: center; gap: 10px; }
+    .actor-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 13px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+    .actor-avatar.fallback {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .actor-avatar.has-image {
+      border-color: transparent;
+      background: var(--surface);
+    }
+    .actor-avatar .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .actor-avatar.has-image .avatar-img { display: block; }
+    .node .actor-avatar {
+      width: 48px;
+      height: 48px;
+    }
+    .actor-node-label { line-height: 1.3; }
     .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
     .charts-stack { display: flex; flex-direction: column; gap: 14px; }
     .chart-card {
@@ -279,10 +319,10 @@
     }
     .workflow-container svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
     .workflow-node { 
-      position: absolute;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      position: absolute; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
       gap: 8px;
       cursor: pointer;
       transition: transform 0.2s;
@@ -292,19 +332,28 @@
     .node-circle { 
       width: 56px;
       height: 56px;
-      border-radius: 50%;
-      border: 2px solid var(--border);
-      background: var(--surface);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: 600;
-      box-shadow: var(--shadow-sm);
-      transition: all 0.2s;
+      border-radius: 50%; 
+      border: 2px solid var(--border); 
+      background: var(--surface); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 18px; 
+      font-weight: 600; 
+      box-shadow: var(--shadow-sm); 
+      transition: all 0.2s; 
+      overflow: hidden; 
+    } 
+    .node-circle.has-image { background: transparent; padding: 0; } 
+    .node-image { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; } 
+    .node-circle.image-fallback {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: var(--accent);
     }
-    .workflow-node.active .node-circle { background: var(--fg); color: var(--surface); border-color: var(--fg); }
-    .workflow-node.processing .node-circle { animation: pulse 1.5s ease-in-out infinite; }
+    .workflow-node.active .node-circle { background: var(--fg); color: var(--surface); border-color: var(--fg); } 
+    .workflow-node.active .node-circle.has-image { background: transparent; box-shadow: 0 0 0 3px var(--accent-soft); } 
+    .workflow-node.processing .node-circle { animation: pulse 1.5s ease-in-out infinite; } 
     .workflow-node.policy .node-circle { background: var(--bg); font-size: 16px; }
     .node-label { font-size: 11px; font-weight: 500; text-align: center; max-width: 100px; color: var(--muted); letter-spacing: 0.2px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.85; } }
@@ -588,14 +637,16 @@
   <script>
     const agentOrder = ["Economic Analyst", "Tax Advisor", "Policy Supporter", "Policy Opposer", "Policy Critic"];
     const landingMacro = document.getElementById('macro-grid-landing');
+    const imageBase = "{{ url_for('static', filename='images') }}";
+    const actorImageBase = `${imageBase}/asset`;
 
     const agentData = {
       'Policy': { x: 40, y: 180, output: '', index: 'P', isPolicy: true },
-      'Economic Analyst': { x: 140, y: 180, output: '', index: 1 },
-      'Tax Advisor': { x: 260, y: 180, output: '', index: 2 },
-      'Policy Supporter': { x: 380, y: 120, output: '', index: 3 },
-      'Policy Opposer': { x: 380, y: 240, output: '', index: 4 },
-      'Policy Critic': { x: 500, y: 180, output: '', index: 5 }
+      'Economic Analyst': { x: 140, y: 180, output: '', index: 1, image: '1.jpg' },
+      'Tax Advisor': { x: 260, y: 180, output: '', index: 2, image: '2.jpg' },
+      'Policy Supporter': { x: 380, y: 120, output: '', index: 3, image: '3.jpg' },
+      'Policy Opposer': { x: 380, y: 240, output: '', index: 4, image: '4.jpg' },
+      'Policy Critic': { x: 500, y: 180, output: '', index: 5, image: '5.jpg' }
     };
 
     const connections = [
@@ -646,6 +697,47 @@
       { name: 'Regulatory Authority (Non-Monetary)', score: 0.82 },
       { name: 'Exporters / Trade Sector', score: 0.51 }
     ];
+
+    const actorImageMap = {
+      'Small Firms': { file: '1.jpg', index: 1 },
+      'Banks (Commercial)': { file: '2.jpg', index: 2 },
+      'Government (Fiscal Authority)': { file: '3.jpg', index: 3 },
+      'Regulatory Authority (Non-Monetary)': { file: '4.jpg', index: 4 },
+      'Exporters / Trade Sector': { file: '5.jpg', index: 5 },
+    };
+
+    function createActorAvatar(name) {
+      const info = actorImageMap[name];
+      if (!info) return null;
+
+      const avatar = document.createElement('div');
+      avatar.className = 'actor-avatar fallback';
+      if (info.index !== undefined) avatar.textContent = info.index;
+
+      if (info.file) {
+        const img = document.createElement('img');
+        img.className = 'avatar-img';
+        img.src = `${actorImageBase}/${info.file}`;
+        img.alt = `${name} photo`;
+        img.loading = 'lazy';
+        img.addEventListener('load', () => {
+          avatar.textContent = '';
+          avatar.classList.remove('fallback');
+          avatar.classList.add('has-image');
+        });
+        img.addEventListener('error', () => {
+          avatar.classList.remove('has-image');
+          avatar.classList.add('fallback');
+          img.remove();
+          if (!avatar.textContent && info.index !== undefined) {
+            avatar.textContent = info.index;
+          }
+        });
+        avatar.appendChild(img);
+      }
+
+      return avatar;
+    }
 
     const escapeHTML = (str) => str.replace(/[&<>"']/g, (c) => ({
       '&': '&amp;',
@@ -798,7 +890,36 @@
         if (data.isPolicy) node.classList.add('policy');
         node.style.left = data.x + 'px';
         node.style.top = data.y + 'px';
-        node.innerHTML = `<div class="node-circle">${data.index}</div><div class="node-label">${name}</div>`;
+        const circle = document.createElement('div');
+        circle.className = 'node-circle image-fallback';
+        circle.textContent = data.index ?? '';
+
+        if (data.image) {
+          const img = document.createElement('img');
+          img.src = `${imageBase}/${data.image}`;
+          img.alt = `${name} avatar`;
+          img.className = 'node-image';
+          img.loading = 'lazy';
+          img.addEventListener('load', () => {
+            circle.classList.add('has-image');
+            circle.classList.remove('image-fallback');
+            circle.textContent = '';
+          });
+          img.addEventListener('error', () => {
+            img.remove();
+            circle.classList.remove('has-image');
+            circle.classList.add('image-fallback');
+            circle.textContent = data.index ?? '';
+          });
+          circle.appendChild(img);
+        }
+
+        const label = document.createElement('div');
+        label.className = 'node-label';
+        label.textContent = name;
+
+        node.appendChild(circle);
+        node.appendChild(label);
         node.addEventListener('click', () => openModal(name));
         workflow.appendChild(node);
       });
@@ -938,16 +1059,24 @@
       }
       const centerX = pentagon.clientWidth / 2;
       const centerY = pentagon.clientHeight / 2;
-      const radius = Math.min(centerX, centerY) - 50;
+      const radius = Math.min(centerX, centerY) - 24;
       actors.forEach((actor, idx) => {
         const angle = (Math.PI * 2 * idx) / actors.length - Math.PI / 2;
-        const x = centerX + radius * Math.cos(angle) - 36;
-        const y = centerY + radius * Math.sin(angle) - 36;
+        const x = centerX + radius * Math.cos(angle) - 44;
+        const y = centerY + radius * Math.sin(angle) - 46;
         const node = document.createElement('div');
         node.className = `node ${idx === 0 ? 'primary' : ''}`;
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
-        node.textContent = actor;
+        node.textContent = '';
+
+        const avatar = createActorAvatar(actor);
+        if (avatar) node.appendChild(avatar);
+
+        const label = document.createElement('div');
+        label.className = 'actor-node-label';
+        label.textContent = actor;
+        node.appendChild(label);
         pentagon.appendChild(node);
       });
     }
@@ -973,7 +1102,23 @@
         const card = document.createElement('div');
         card.className = 'actor-card';
         const safeScore = (score ?? 0).toFixed ? score.toFixed(2) : Number(score || 0).toFixed(2);
-        card.innerHTML = `<span class="name">${name}</span><span class="score">${safeScore}</span>`;
+        const header = document.createElement('div');
+        header.className = 'actor-card-header';
+
+        const avatar = createActorAvatar(name);
+        if (avatar) header.appendChild(avatar);
+
+        const label = document.createElement('span');
+        label.className = 'name';
+        label.textContent = name;
+        header.appendChild(label);
+
+        const scoreEl = document.createElement('span');
+        scoreEl.className = 'score';
+        scoreEl.textContent = safeScore;
+
+        card.appendChild(header);
+        card.appendChild(scoreEl);
         topActorCards.appendChild(card);
       });
     }
