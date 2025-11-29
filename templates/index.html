@@ -112,7 +112,16 @@
     .node-label { font-size: 11px; font-weight: 700; text-align: center; max-width: 100px; color: #000; text-transform: uppercase; letter-spacing: 0.5px; }
     @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.1); opacity: 0.8; } }
     .final-section { margin-top: 10px; padding-top: 14px; border-top: 2px solid #000; }
-    .final-output { border: 2px solid #000; padding: 14px; background: #fff; min-height: 100px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; box-shadow: 6px 6px 0 #000; }
+    .final-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: start; }
+    .final-output { border: 2px solid #000; padding: 14px; background: #fff; min-height: 120px; font-size: 14px; line-height: 1.7; white-space: normal; box-shadow: 6px 6px 0 #000; border-radius: 12px; }
+    .output-block p { margin: 0 0 10px 0; }
+    .output-list { margin: 0 0 10px 0; padding-left: 18px; display: grid; gap: 6px; }
+    .output-list li { line-height: 1.5; }
+    .agent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .agent-card { border: 2px solid #000; padding: 12px; border-radius: 12px; background: #fff; box-shadow: 5px 5px 0 #000; display: flex; flex-direction: column; gap: 8px; }
+    .agent-card h4 { margin: 0; font-size: 14px; letter-spacing: 0.1px; display: flex; align-items: center; gap: 8px; }
+    .agent-badge { border: 1px solid #000; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #f5f5f5; text-transform: uppercase; letter-spacing: 0.4px; }
+    .agent-empty { border: 1px dashed #000; padding: 12px; border-radius: 10px; background: #fafafa; color: #555; text-align: center; }
     .final-controls { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
     .analysis-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     .analysis-controls .status { font-size: 13px; color: #666; font-weight: 600; }
@@ -128,7 +137,7 @@
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     @media (max-width: 1100px) { .grid-main, .analysis-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 700px) { .metrics.new { grid-template-columns: repeat(2, 1fr); } .workflow-container { height: 360px; } }
+    @media (max-width: 700px) { .metrics.new { grid-template-columns: repeat(2, 1fr); } .workflow-container { height: 360px; } .final-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -212,9 +221,17 @@
           <div class="final-controls">
             <button id="report-button">Download Report</button>
           </div>
-          <div>
-            <h2 style="margin-bottom: 12px;">Consolidated Output</h2>
-            <div class="final-output" id="final-output">Analysis results will appear here after running the agents.</div>
+          <div class="final-grid">
+            <div>
+              <h2 style="margin-bottom: 12px;">Consolidated Output</h2>
+              <div class="final-output output-block" id="final-output">Analysis results will appear here after running the agents.</div>
+            </div>
+            <div>
+              <h2 style="margin-bottom: 12px;">Agent Responses</h2>
+              <div class="agent-grid" id="agent-grid">
+                <div class="agent-empty">Run the analysis to view structured responses from each agent.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -294,6 +311,7 @@
     const statusEl = document.getElementById('run-status');
     const finalBox = document.getElementById('final-output');
     const policyTextarea = document.getElementById('policy-text');
+    const agentGrid = document.getElementById('agent-grid');
 
     const policyInput = document.getElementById('sim-policy-text');
     const signalBadges = document.getElementById('signal-badges');
@@ -307,6 +325,59 @@
     let globalChart;
     let actorCharts = {};
     const samplePolicy = "Increase transfer payments, ease small-business credit, and tighten emissions standards for utilities.";
+
+    const escapeHTML = (str) => str.replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c]));
+
+    function formatOutput(raw) {
+      const cleaned = (raw || '').replace(/\\n/g, '\n').trim();
+      if (!cleaned) return '<p class="subtext">No output available</p>';
+      const escaped = escapeHTML(cleaned);
+      const blocks = escaped.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+
+      const html = blocks.map((block) => {
+        const lines = block.split(/\n/).filter(Boolean);
+        const isList = lines.length > 1 && lines.every(line => /^[-•]/.test(line.trim()));
+        if (isList) {
+          const items = lines.map(line => `<li>${line.replace(/^[-•]\s*/, '')}</li>`).join('');
+          return `<ul class="output-list">${items}</ul>`;
+        }
+        return `<p>${lines.join('<br>')}</p>`;
+      }).join('');
+
+      return `<div class="output-block">${html}</div>`;
+    }
+
+    finalBox.innerHTML = formatOutput(finalBox.textContent);
+
+    function renderAgentCards() {
+      agentGrid.innerHTML = '';
+      let hasContent = false;
+      agentOrder.forEach((agentName, idx) => {
+        const output = agentData[agentName]?.output?.trim();
+        if (!output) return;
+        hasContent = true;
+        const card = document.createElement('div');
+        card.className = 'agent-card';
+        card.innerHTML = `
+          <h4><span class="agent-badge">Agent ${idx + 1}</span>${agentName}</h4>
+          ${formatOutput(output)}
+        `;
+        agentGrid.appendChild(card);
+      });
+
+      if (!hasContent) {
+        const empty = document.createElement('div');
+        empty.className = 'agent-empty';
+        empty.textContent = 'Run the analysis to view structured responses from each agent.';
+        agentGrid.appendChild(empty);
+      }
+    }
 
     function setActiveSection(target) {
       const sections = document.querySelectorAll('.page-section');
@@ -368,9 +439,9 @@
       modalTitle.textContent = agentName;
       if (agentName === 'Policy') {
         const policyText = policyTextarea.value.trim();
-        modalBody.textContent = policyText || 'No policy entered yet';
+        modalBody.innerHTML = formatOutput(policyText || 'No policy entered yet');
       } else {
-        modalBody.textContent = agentData[agentName].output || 'No output available yet';
+        modalBody.innerHTML = formatOutput(agentData[agentName].output || 'No output available yet');
       }
       modal.classList.add('active');
     }
@@ -426,11 +497,12 @@
           }
         });
 
-        finalBox.textContent = result.final_output || 'No consolidated output available';
+        finalBox.innerHTML = formatOutput(result.final_output || 'No consolidated output available');
+        renderAgentCards();
         statusEl.textContent = 'Analysis complete';
       } catch (err) {
         document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('processing'));
-        finalBox.textContent = err.message;
+        finalBox.innerHTML = formatOutput(err.message);
         statusEl.textContent = 'Error: ' + err.message;
       }
     }
@@ -458,7 +530,8 @@
       policyTextarea.value = '';
       Object.keys(agentData).forEach(key => agentData[key].output = '');
       document.querySelectorAll('.workflow-node').forEach(n => n.classList.remove('active', 'processing'));
-      finalBox.textContent = 'Analysis results will appear here after running the agents.';
+      finalBox.innerHTML = formatOutput('Analysis results will appear here after running the agents.');
+      renderAgentCards();
       statusEl.textContent = 'Session reset';
       loadIndicators();
     }
@@ -632,6 +705,7 @@
     drawConnections();
     createNodes();
     startFromQuery();
+    renderAgentCards();
   </script>
 </body>
 </html>
