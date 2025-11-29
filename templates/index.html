@@ -249,9 +249,12 @@
     .analysis-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; align-items: start; }
     .wide-panel { grid-column: 1 / -1; }
     .debate-thread { display: flex; flex-direction: column; gap: 10px; }
-    .debate-exchange { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
-    .debate-avatar { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--surface); font-weight: 700; font-size: 13px; box-shadow: var(--shadow-sm); }
-    .debate-bubble { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); box-shadow: var(--shadow-sm); font-size: 13px; line-height: 1.6; animation: slideUp 0.25s ease; }
+    .debate-exchange { display: flex; gap: 10px; align-items: flex-start; max-width: 86%; }
+    .debate-exchange.supporter { align-self: flex-start; }
+    .debate-exchange.opposer { align-self: flex-end; flex-direction: row-reverse; }
+    .debate-avatar { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--surface); font-weight: 700; font-size: 13px; box-shadow: var(--shadow-sm); flex-shrink: 0; }
+    .debate-bubble { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: var(--surface); box-shadow: var(--shadow-sm); font-size: 13px; line-height: 1.6; animation: slideUp 0.25s ease; max-width: 100%; }
+    .debate-exchange.opposer .debate-bubble { background: var(--bg); }
     .analysis-panel { 
       border: 1px solid var(--border);
       background: var(--surface);
@@ -629,6 +632,7 @@
     const debateThread = document.getElementById('debate-thread');
     const supporterColor = '#0066cc';
     const opposerColor = '#d62828';
+    const debateDelay = 650;
 
     let globalChart;
     let actorCharts = {};
@@ -1082,10 +1086,10 @@
 
     function appendDebateRow({ stance, message }) {
       const row = document.createElement('div');
-      row.className = 'debate-exchange';
+      const isSupporter = (stance || '').toLowerCase().includes('support');
+      row.className = `debate-exchange ${isSupporter ? 'supporter' : 'opposer'}`;
 
       const avatar = document.createElement('div');
-      const isSupporter = (stance || '').toLowerCase().includes('support');
       avatar.className = 'debate-avatar';
       avatar.style.background = isSupporter ? supporterColor : opposerColor;
       avatar.textContent = isSupporter ? 'S' : 'O';
@@ -1106,7 +1110,7 @@
       debateThread.innerHTML = '';
       const items = exchanges && exchanges.length ? exchanges : sampleDebate;
       items.forEach((entry, idx) => {
-        const timer = setTimeout(() => appendDebateRow(entry), idx * 450);
+        const timer = setTimeout(() => appendDebateRow(entry), idx * debateDelay);
         debateTimers.push(timer);
       });
     }
