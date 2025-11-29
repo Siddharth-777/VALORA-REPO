@@ -656,7 +656,7 @@
     const agentOrder = ["Economic Analyst", "Tax Advisor", "Policy Supporter", "Policy Opposer", "Policy Critic"];
     const landingMacro = document.getElementById('macro-grid-landing');
     const imageBase = "{{ url_for('static', filename='images') }}";
-    const actorImageBase = `${imageBase}/asset`;
+    const actorImageBase = imageBase;
 
     const agentData = {
       'Policy': { x: 40, y: 180, output: '', index: 'P', isPolicy: true },
